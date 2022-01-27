@@ -1,0 +1,6 @@
+[submodule "external_ressources/Drawing-with-Fourier-Epicycles"]
+	path = external_ressources/Drawing-with-Fourier-Epicycles
+	url = https://github.com/vicmarcag/Drawing-with-Fourier-Epicycles.git
+[submodule "external_ressources/coding-druid"]
+	path = external_ressources/coding-druid
+	url = https://github.com/avantcontra/coding-druid.git
