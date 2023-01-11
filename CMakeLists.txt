@@ -20,62 +20,73 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if (MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_INSTALL_BINDIR}/$<CONFIG>) 
+
 ###################### find libraries #############################
 find_library( PrinterInterfaceLib 
-	NAMES "PrinterInterface.lib"
-	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.lib"
+	NAMES PrinterInterface PrintEngine MeteorCLS PrinterInterfaceCLS
+	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
 	NO_DEFAULT_PATH
   REQUIRED
 )
-find_library( PrinterInterfaceDll 
-	NAMES "PrinterInterface.dll"
-	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.dll"
-	NO_DEFAULT_PATH
-  REQUIRED
-)
-find_library( PrintEngine 
-	NAMES "PrintEngine.dll"
-	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrintEngine.dll"
-	NO_DEFAULT_PATH
-  REQUIRED
-)
-find_library( MeteorCLSdll 
-	NAMES "MeteorCLS.dll"
-	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/MeteorCLS.dll"
-	NO_DEFAULT_PATH
-  REQUIRED
-)
-find_library( PrinterInterfaceCLSdll 
-	NAMES "PrinterInterfaceCLS.dll"
-	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterfaceCLS.dll"
-	NO_DEFAULT_PATH
-  REQUIRED
-)
+#find_library( PrinterInterfaceDll 
+#	NAMES "PrinterInterface.dll"
+#	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+#	NO_DEFAULT_PATH
+#  REQUIRED
+#)
+#find_library( PrintEngine 
+#	NAMES PrintEngine
+#	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+#	NO_DEFAULT_PATH
+#  REQUIRED
+#)
+#find_library( MeteorCLSdll 
+#	NAMES "MeteorCLS"
+#	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+#	NO_DEFAULT_PATH
+#  REQUIRED
+#)
+#find_library( PrinterInterfaceCLSdll 
+#	NAMES "PrinterInterfaceCLS"
+#	PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+#	NO_DEFAULT_PATH
+#  REQUIRED
+#)
 
 find_path(
   METEOR_INC
   NAMES Meteor.h PrinterInterface.h typedef.h
   NO_DEFAULT_PATH
-  HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/include"
+  HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/include/"
+  REQUIRED
+)
+find_file(
+  METEOR_LIBS
+  NAMES PrinterInterface PrintEngine MeteorCLS PrinterInterfaceCLS
+  NO_DEFAULT_PATH
+  HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+  REQUIRED
 )
 
 message("found meteor libs ${PrinterInterfaceLib}")
 message("found meteor includes ${METEOR_INC}")
 
 add_library( PrinterInterfaceLib STATIC IMPORTED  GLOBAL)
-set_target_properties( PrinterInterfaceLib PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.lib")
+set_target_properties( PrinterInterfaceLib PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.lib)
 
 add_library( PrinterInterfaceDll SHARED IMPORTED  GLOBAL)
-set_target_properties( PrinterInterfaceDll PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.dll")
+set_target_properties( PrinterInterfaceDll PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterface.dll)
 
 add_library( PrintEngine SHARED IMPORTED  GLOBAL)
-set_target_properties( PrintEngine PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrintEngine.dll")
+set_target_properties( PrintEngine PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrintEngine.dll)
 
 add_library( MeteorCLSdll SHARED IMPORTED  GLOBAL)
-set_target_properties( MeteorCLSdll PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/MeteorCLS.dll")
+set_target_properties( MeteorCLSdll PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/MeteorCLS.dll)
 
 add_library( PrinterInterfaceCLSdll SHARED IMPORTED  GLOBAL)
-set_target_properties( PrinterInterfaceCLSdll PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterfaceCLS.dll")
+set_target_properties( PrinterInterfaceCLSdll PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/PrinterInterfaceCLS.dll)
 
 ###################### Build Library ############################
 
@@ -84,7 +95,7 @@ file(GLOB lib_SRCS
 )
 add_library(ph_interface_lib STATIC ${lib_SRCS})
 
-target_link_libraries(ph_interface_lib ${PrinterInterfaceLib} ${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll} )
+target_link_libraries(ph_interface_lib ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll} )
 
 target_include_directories(ph_interface_lib 
 PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/includes/
@@ -94,7 +105,7 @@ set_target_properties(
     ph_interface_lib
     PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES ${METEOR_INC}
-      IMPORTED_LOCATION ${PrinterInterfaceLib}
+    # IMPORTED_LOCATION ${PrinterInterfaceLib}
 )
 # copy dlls one by one 
 function(copy_dlls_target_dir target_exe)
@@ -132,7 +143,7 @@ file(GLOB exe_SRCS
 )
 add_executable(ph_interface_exe ${exe_SRCS})
 
-target_link_libraries(ph_interface_exe ${PrinterInterfaceLib} ${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll})
+target_link_libraries(ph_interface_exe ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll})
 
 target_include_directories(ph_interface_exe 
 PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/includes/
@@ -143,7 +154,7 @@ set_target_properties(
     ph_interface_exe
     PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES ${METEOR_INC}
-      IMPORTED_LOCATION ${PrinterInterfaceLib}
+      IMPORTED_LOCATION ${METEOR_INC}
 )
 
 

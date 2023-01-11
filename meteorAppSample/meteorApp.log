@@ -1,0 +1,4 @@
+﻿  meteorApp.cpp
+meteorApp.obj : error LNK2019: unresolved external symbol __imp__PiOpenPrinter@0 referenced in function _main
+C:\Users\SamiDhiab\source\repos\meteorApp\Dep\meteor\lib\PrinterInterface.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'x86'
+C:\Users\SamiDhiab\source\repos\meteorApp\Debug\meteorApp.exe : fatal error LNK1120: 1 unresolved externals
