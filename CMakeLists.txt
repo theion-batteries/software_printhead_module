@@ -64,7 +64,7 @@ find_path(
 )
 find_file(
   METEOR_LIBS
-  NAMES PrinterInterface PrintEngine MeteorCLS PrinterInterfaceCLS
+  NAMES PrinterInterface.lib PrinterInterface.dll PrintEngine.dll MeteorCLS.dll PrinterInterfaceCLS.dll  
   NO_DEFAULT_PATH
   HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
   REQUIRED
