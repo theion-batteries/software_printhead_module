@@ -1,0 +1,51 @@
+
+=================================================================================================
+Getting static Xaar1001/1002/1003/1006 head information
+=================================================================================================
+
+
+Static information, like head serial number etc. is published as EEPROM data
+and can be obtainned in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+ 
+an example of the JSON output from TestApp:
+ 
+{
+  "#HeadType" : "HT_Xaar100X",
+  "#InfoType" : "Head EEPROM Data",
+  "00:03:00:00" : 
+  {
+    "PTrim1_V" : -0.1875,
+    "PTrim2_V" : -0.125,
+    "PTrim3_V" : -0.125,
+    "PTrim4_V" : -0.0625,
+    "PTrim5_V" : -0.0625,
+    "PTrim6_V" : -0.0625,
+    "PTrim7_V" : 0,
+    "PTrim8_V" : 0,
+    "SCLK" : "240",
+    "VOffset_V" : 2.3125
+  },
+  "00:03:00:01" : 
+  {
+    "PTrim1_V" : -0.1875,
+    "PTrim2_V" : -0.1875,
+    "PTrim3_V" : -0.125,
+    "PTrim4_V" : -0.0625,
+    "PTrim5_V" : 0,
+    "PTrim6_V" : 0.0625,
+    "PTrim7_V" : 0.125,
+    "PTrim8_V" : 0.125,
+    "SCLK" : "240",
+    "VOffset_V" : 2.4375
+  },
+  "SerialNumber" : "3017694"
+}
+
+Note: it seems that the head serial number is present for 1003/1006 heads only. 
+For other models it seems to be 0xFFFFFFFF. In this case head S/N will have value "NotPresent".
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt

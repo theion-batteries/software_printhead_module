@@ -1,0 +1,27 @@
+=================================================================================================
+    Some information regarding selecting Kyocera KY0600_EX head sub-type
+=================================================================================================
+
+As far as we aware currently there are 2 major KY0600_EX head variants:
+
+    * KJ4B-0600-020SP-***, 364 pixels wide. Meteor head sub-type: 0, default
+    * KJ4B-0600-B24SP-***, 452 pixels wide. Meteor head sub-type: 1
+
+These variants also have different nozzles layout.
+Both of them are supported as HT_KY0600_EX head type, "KY0600_EX" name in the config file.
+But in order to operate properly, a correct sub-type should be specified in Meteor config file.
+
+sub-type:0 is the default one, if you use this particular head type, you don't need to additoinally specify it.
+
+Otherwise, the following key is used: "HeadSubType". Its value should be 0 or 1, and it can be placed in the 
+following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y].
+Thus, it is possible to mix different sub-types on the same PDC. 	
+
+    [DefaultParameterValues] 	
+    ;HeadSubType = 0 ;-- head sub-type, global default value 
+
+    [HeadDriver1:1]
+    HeadSubType = 0,1 ;-- head sub-types for PDC1:Head1 and PDC1:Head2 accordingly
+
+
+                      

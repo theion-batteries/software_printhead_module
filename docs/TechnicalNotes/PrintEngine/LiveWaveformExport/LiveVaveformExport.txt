@@ -1,0 +1,132 @@
+=================================================================================================
+    Some information on Meteor "Live waveform export" functionality.
+=================================================================================================
+
+This feature mostly applies to the heads with trapezoidal analog waveforms (Dimatix, Epson, etc.).
+It is currently implemented for Epson ES3200, ES1600, ES800 heads only.
+
+Many print head types use analog trapezoidal waveforms. Depending on the head design, one or several such 
+waveforms can be assigned to a whole head or to a head part (Jetting assembly or "JA" in Meteor terms).
+Due to teh fact that heads/JAs are not perfectly matching because of manufacturing tolerances etc. it is sometimes
+required to slightly adjust waveform amplitude without real changes to its shape. 
+It is usually done by "waveform scaling" and very head-specific.
+
+In general case every head JA can have its own individually shaped and/or scaled base waveform.
+For example, ES3200 head has 4 JAs, every JA has 2 waveforms (ComA and ComB) and these waveforms can be different and
+can have individual scaling.
+
+In principle it is all set up in Meteor config file and just works, but in practice it might be quite 
+difficult to see which parameter affects a concrete waveform for the concrete JA. And the system can have many 
+PCCs driving a lot of heads.
+
+All WF information can be seen in Meteor log (by enabling "Waveforms" and "WaveformData" logging categories), but
+this might generate huge amount of information that is not easy to deal with.
+
+
+So, "Live waveform export" functionality was introduced. 
+
+When it is enabled (and it is disabled by default because it can create a lot of data files and slow down the system),
+Waveforms after all possible adjustments for the selected PCC/HDC/Head/JA  are exported into the easily readable
+text files in the specific directory. These files can be read by a humean or fed to the GNU Plot, which will
+display the real waveform shape. 
+Also, an additional application can use these files to display real WF shape in a more convenient way than GNU Plot.
+
+N.B. It is also theoretically possible to export data in VCD format as a series of samples to be nicely 
+displayed in GTKWave program. But it is unclear if anyone needs this.
+
+--- enabling this feature.
+
+It is done by "LiveWfExport" parameter in Meteor config file. This parameter can have scope:
+[DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y:Z], but this may depend on a head type.
+In general, you can enable live WF export for the whole system, for specified PCC, for specified HDC, and specified head.
+
+For example, this allows export for ALL JAs on ALL heads in the system, which can result in a huge amount 
+of dump files 
+    
+    [DefaultParameterValues] 
+    LiveWfExport = 1
+
+This allows WF export only for PCC:1, HDC:1 (assuming that there is 1 head per HDC)
+
+    [HeadDriver1:1]
+    LiveWfExport = 1
+
+--- exporting 
+
+If this feature is enabled, at the moment of sending WF data to the HDC PrintEngine will create a sub directory
+"WfLiveInfo" in the directory where config files live and export required waveforms data there as a series of files
+with names following the pattern: "WfInfo_PCC-HDC-Head-JA.txt". I.e. file  "WfInfo_04-03-02-01.txt" will contain 
+exported WF data for PCC:4, HDC:3,Head:2,JA:1
+
+--- WF exported file contents.
+As mentioned above, the dump text files are compatible with GNU Plot format. They can contain comments with pretty
+useful information and pairs of numbers [time_ns] -> [Voltage_mv]. These are the nodes of piecewise function that
+represent a waveform or a series of waveforms (there can be several of them in the same file)
+
+In general case the format (especially comments) is head-specific.
+
+An example of ES3200 wavform exported:
+
+
+    #-- Dump of a live waveform for print head:HT_EPSON_S3200. Created on:2020-11-10.14:06:44
+    #-- Object address: PCC:1,HDC:1,Head:1,JA:1
+    #--- WaveformType:ComA
+    #--- GenericScale:1.000, ComA_Scale:1.000, ResultScale:1.000
+    #--- NumPulses:3, NumSegTotal:9
+    #--- VStart:18750mv, VMin:2500mv, VMax:25000mv, TotalDuration:60.455us
+    # T(ns)	V(mv)
+    #-- Pulse:0
+    0   	18750		#-- SegStart. Seg:0
+    2000	2500		#-- SegSlope(-8.125V/us). Seg:0
+    3900	2500		#-- SegHold, Seg:0
+    3900	2500		#-- SegStart. Seg:1
+    5900	25000		#-- SegSlope(11.250V/us). Seg:1
+    10900	25000		#-- SegHold, Seg:1
+    10900	25000		#-- SegStart. Seg:2
+    12885	18750		#-- SegSlope(-3.150V/us). Seg:2
+    20985	18750		#-- SegHold, Seg:2
+    #-- Pulse:1
+    20985	18750		#-- SegStart. Seg:0
+    [.....]
+
+
+    #--- WaveformType:ComB
+    #--- GenericScale:1.000, ComB_Scale:1.000, ResultScale:1.000
+    #--- NumPulses:1, NumSegTotal:3
+    #--- VStart:18750mv, VMin:2500mv, VMax:25000mv, TotalDuration:60.445us
+    # T(ns)	V(mv)
+    #-- Pulse:0
+    0	    18750		#-- SegStart. Seg:0
+    2000	2500		#-- SegSlope(-8.125V/us). Seg:0
+    3900	2500		#-- SegHold, Seg:0
+    3900	2500		#-- SegStart. Seg:1
+    5900	25000		#-- SegSlope(11.250V/us). Seg:1
+
+As you can see, there are 2 Waveforms (ComA and ComB) dumps in a single file, but this is a problem of the 
+GNU Plot script that will plot this data.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

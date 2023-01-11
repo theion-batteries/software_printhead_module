@@ -1,0 +1,52 @@
+=================================================================================================
+    
+    Some information on the way of detecting/signaling hardware problems with HDCs 
+
+=================================================================================================
+
+There are sevaral types of hardware problems, which can happen with HDC and the head it drives.
+These problems can be detected by Meteor and reported to the other system via signals on PCC GPIO.
+
+Currently following problems can be identified / handled:
+
+    * "HDC status alarms" It is a very head-specific feature, where the problems are indicated by 
+        some bits set in HDC status word. PCC/HDC FPGA monitors some of the critical parameters and 
+        sets certain bits to indicate the problem. For example, it addresses Head / Amplifier overtemperature,
+        waveform problems, some voltages failures etc.
+        These type of conditions usually result in HDC/head power cut off and error message logged, e.g
+        "*** [PCC:1,HDC:4] Status Alarm: Amplifier Overtemperature" or similar
+
+    * "HDC drop out" This might happen when connectivity between PCC and HDC is lost, e.g HDC cable 
+       is unplugged live and similar.
+       This results in HDC powered off and error message like following:
+       "*** [PCC:1,HDC:4] has dropped out. HdcState:0xd(ST_RUNNING), StatusBits:0x1fffffff"  
+
+---------------------------------------------------------------------------------------------------
+---- GPIO signalling on HDC error conditions
+---------------------------------------------------------------------------------------------------
+
+In normal circumstances nothing apart from error messages and abnormal HDC power down happens.
+On the other hand, Meteor system can be configured to issue a hardware signal on PCC GPIO connector when 
+HDC hardware problems detected, as described above.
+
+To enable this feature it is necessary:
+
+    * select PCC GPIO signal[1..4] to be used. Value 0 (default) means "don't use GPIO"
+    
+        [System]
+        ; PCC output signal 1..4 to use for indicating HDC hardware errors. 0(default) to disable GPIO usage
+        HdcDropOutGpio = 1 ; use output 1 on PCC GPIO connector
+
+    * Optionally select GPIO "active" level. 
+      By default "inactive" level is +5V (GP out is open-drain and pulled up by resistor) and "active" is 0V.
+      This can be changed by inverting GP Output by using  "GpioOutInvertMask" parameter:
+  
+        [Test]
+        GpioOutInvertMask = 0x00 ; GPOut1..4 are not inverted 
+        
+The way it works is as follows:
+
+    * on system start up and HDC power ON selected GP output is set to "inactive" state
+    * it stays in "inactive" state if there are no problems forever
+    * if HDC problem is discovered, Meteor logs error message and activates selected GP output on a PCC connector
+      This output stays in "active" state unless all HDCs are powered down and up again.

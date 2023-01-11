@@ -1,0 +1,45 @@
+=================================================================================================
+    Some information regarding  Epson S3200 head EEPROM data
+=================================================================================================
+
+First of all, there is some generic information regarding getting head EEPROM data: \TechnicalNotes\TestApp\Head_EEPROM.txt 
+
+Head EEPROM data contains the same information that can be found on the head label:
+
+    * head serial number
+    * a number of hex codes that describe recommended head ASIC voltages. These codes and voltages corresponding 
+      to them can be found in Epson documentation. Meteor decodes these voltages for user convenience.
+
+An example of one of our head EEPROM data:
+
+"SerialNumber" : "W96053310044R1R079A",
+"VhKLRT_Chip1" : "0x6c",        # VhKLRT voltage for head "Chip1" or "ASIC1" in Meteor terms, the same as on QR code.
+"VhKLRT_Chip1_V" : "25.70",     # VhKLRT voltage for head "Chip1" or "ASIC1" in Volts, decoded
+
+"VhKLRT_Chip2" : "0x69",        # the same for ASIC2, etc.
+"VhKLRT_Chip2_V" : "25.40",
+
+"VhKLRT_Chip3" : "0x79",
+"VhKLRT_Chip3_V" : "27.00",
+
+"VhKLRT_Chip4" : "0x63",
+"VhKLRT_Chip4_V" : "24.80",
+
+"VhKSRT_Chip1" : "0x97",
+"VhKSRT_Chip1_V" : "30.00",
+
+"VhKSRT_Chip2" : "0x94",
+"VhKSRT_Chip2_V" : "29.70",
+
+"VhKSRT_Chip3" : "0x9f",
+"VhKSRT_Chip3_V" : "30.80",
+
+"VhKSRT_Chip4" : "0x8f",
+"VhKSRT_Chip4_V" : "29.20"
+
+-----
+
+Regarding using/applying those voltage values: please look at "Voltages_Temperatures.txt"
+
+
+

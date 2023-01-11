@@ -1,0 +1,250 @@
+=================================================================================================
+This directory contains Waveforms and related stuff for Dimatix "Polaris" and "Qclass" heads. 
+This information is applicable for the "new edition" head types: PQ_512, QS_256
+
+=================================================================================================
+
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+
+
+*   Max. total number of segments in a whole WF is 31; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+*   Each Pulse has a 4-bit GreyLevel mask associated with it (Max BPP value is 2).  
+    Every bit in the GL mask byte is set if this WF pulse will be used to eject ink for a particular 2BPP pixel data.
+    For a binary waveform (printing 1BPP) the GL mask is usually 0x0E
+
+*   Also, HDC-Q requires that ALL waveforms need to have the same number of pulses. This includes
+    tickling waveforms if they are used.
+
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                   .
+         .    .--     .      .
+         .   /.  \____.__    .
+         .  / .       .   \  .
+         .-/  .       .     \.
+         .    .       .      .
+           S0     S1     S2
+
+
+Waveform constraints:
+ * 1..8 pulses per Waveform, 2..8 segments per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same voltage: 0 Volts.
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * absolute Min & Max voltages are properties of the hardware and must be in range: [1...150] volts
+ * Hold time in general can't be < 50ns and > 4096*50ns. Some head types have stricter constraints. For example,
+    Polaris(PQ_512) and Sapphire (QS_256) WF require hold time for the segment with slew rate > 0 to be min. 50ns, 
+    hold time for the segment with slew rate < 0 to be min. 500 ns and the 0V hold time for the very last 
+    segment in the WF to be min. 2350 ns.
+
+ * All waveforms assigned to the JAs within one head (including tickling WF) must have the same number of pulses.
+   Otherwise error message is logged and waveform is ignored.   
+
+
+--- Hardware configuration for HDC-Q:
+
+    * 1 Polaris(PQ_512) head with 4 nozzle rows (JAs)
+    * 2 Sapphire (QS_256) heads with 2 nozzle rows (JAs) each
+
+    So, different number of heads per HDC and JAs per head makes these heads configuration quite different.
+    Nevertheless, each JA can have its own working and tickling waveform.
+
+
+--- Waveforms configuration:
+
+    * Waveforms data is stored in files, e.g. "3PulseQClassWaveform.txt". Also, old-style *.mqw files are 
+      supported, though their format is much less flexible and they are not recommended to be used in 
+      newer configurations.
+
+    * These file names/paths are listed in "head section". e.g [PQ_512]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+    * "Tickling" waveform is selected by "TickleWaveformFileIdx" parameter, like "TickleWaveformFileIdx = 2"
+        Its default value is 0, which means "not used".
+
+    --------
+    Configuration example for PQ_512 (1 head per HDC, 4 JAs per head):
+
+    [PQ_512] ;-- "head" section
+    Waveform1 = "Waveform\Dimatix\QClass\SampleQClassWaveform.mqw" ;-- working WF1 (old style, *.mqw format) 
+    Waveform2 = "Waveform\Dimatix\QClass\3PulseQClassWaveform.txt" ;-- working WF2   
+    Waveform3 = "Waveform\Dimatix\QClass\TickleWaveformSample.txt" ;-- tickling WF
+
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform:  "SampleQClassWaveform.mqw"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "TickleWaveformSample.txt"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1, 2,2 ; WaveformID applied to JA1,JA2, JA3,JA4 respectively 
+    TickleWaveformFileIdx = 0,0, 3,3 ; tickling waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+
+
+Note that the example above specifies waveforms down to the JAs level. The head has 4 JAs, so, it is required to specify
+list of 4 values in [HeadX:Y] section, one value per JA. 
+
+
+
+    --------
+    Configuration example for QS_256 (2 heads per HDC, 2 JAs per head):
+
+    [QS_256] ;-- "head" section
+    Waveform1 = "Waveform\Dimatix\QClass\SampleQClassWaveform.mqw" ;-- working WF1  
+    Waveform2 = "Waveform\Dimatix\QClass\3PulseQClassWaveform.txt" ;-- working WF2   
+    Waveform3 = "Waveform\Dimatix\QClass\TickleWaveformSample.txt" ;-- tickling WF
+
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform:  "SampleQClassWaveform.mqw"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "TickleWaveformSample.txt"   
+
+    [HeadDriver1:1]
+    WaveformFileIdx       = 2,1 ; Whole Head1 will use WF index2 and Whole Head2 will use WF index1
+    TickleWaveformFileIdx = 3,0 ; Whole Head1 will use tickling WF index3 and Whole Head2 won't use tickling WF
+    
+    [Head1:1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1 ; working  WaveformID applied to JA1,JA2 for PCC:1, HDC:1, Head:1
+    TickleWaveformFileIdx = 0,0 ; tickling WaveformID applied to JA1,JA2 for PCC:1, HDC:1, Head:1
+
+
+
+
+=================================================================================================
+====    Waveform voltages scaling 
+=================================================================================================
+
+It is possible to slightly vary WF voltages without changes in WF file.
+This "WF scaling" can be applied to: 
+ * each head's JA  individually
+ * whole head (All JAs at the same time)
+ * all heads/HDCs on the same PCC
+ * All PCCs/HDCs/Heads in whole system.
+
+WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+
+"WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+Note that it has quite narrow range.
+
+"WF_VScale_Mode" Specifies mode of scaling: 
+
+    0: scaling disabled
+    1: (default) keeps segment hold time and whole total segment width constant, slew rate changes.
+    2: keeps slew rate constant, segment hold time changes. Keep total segment width and whole WF duration constant. 
+
+
+Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y:Z]. 
+Usual mechanism of “parameters overriding” applies.
+
+If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+
+=================================================================================================
+Getting / setting head temperatures
+=================================================================================================
+
+As mentioned earlier, HDC-Q drives 2 variants of printheads:
+
+    * 1 Polaris(PQ_512) head with 4 nozzle rows (JAs). The head has 2 "halves", 2 JA each. Each "half" has a thermistor.  
+        It looks like this head has a heater. It is attached to the head frame and is referred as "frame heater".
+        Actually, each side of the frame has its own heater.
+        Two theremistors are mounted on the the sides of the frame.
+
+    * 2 Sapphire (QS_256) heads with 2 nozzle rows (JAs) each. Each head has its own thermistor.
+        No heater on this head.
+
+
+In both cases we have 2 thermistors for controlling heads temperature, but from configuration point of view
+it is slightly different cases due to different number of head per HDC and JAs per head.
+HDC-Q has 4 Thermistor inputs: 2 are on the head connector and 2 on the external connector: Aux1,Aux2.
+Aux1 and Aux2 inputs supposed to use 10K thermistor with 3428 B-constant. Using exthernal thermistors is an optional feature.
+HDC-Q also has 4 digital outputs to control optional heaters.
+
+-- Mapping thermistor inputs to relay control outputs:
+Head1 thermistor has index 1
+Head2 thermistor has index 2
+Aux1  thermistor has index 3  
+Aux2  thermistor has index 4
+
+There are 4 relay control outputs; they also have indices [1..4].
+
+Let's for example, we have the simplest mapping:
+Head1 thermistor index 1 -> controls heater on Output1
+Head2 thermistor index 2 -> controls heater on Output2
+Aux1  thermistor index 3 -> controls heater on Output3 
+Aux2  thermistor index 4 -> controls heater on Output4
+
+
+Then in [HeadDriverX:Y] section on the config file we need to specyfy following keys:
+
+Heater1_IO = 1 ; Head1 thermistor
+Heater2_IO = 2 ; Head2 thermistor
+Heater3_IO = 3 ; Aux1  thermistor
+Heater4_IO = 4 ; Aux2  thermistor
+
+Default value of "Heater*" key is 0, which means "no control, unmapped"
+
+---
+"AuxTargetTemperature"  parameter specifies Aux target temperature. It is a list of 2 values for Aux1 and Aux2 and should 
+live in [HeadDriverX:Y] section.  
+
+---
+"HeadTargetTemperature" parameter specifies head target temperature;  
+
+QS_256 variant drives 2 heads, and "HeadTargetTemperature" parameter can be specified down to [HeadDriverX:Y] level.
+
+
+PQ_512 variant drives 1 head,  and "HeadTargetTemperature" parameter can be specified down to [HeadX:Y] level.
+Because PQ_512 has 4 JAs, but the temperature can be set only for head "half", values for JA1, JA2 must be the same and 
+values for JA3, JA4 must be the same. It might look strange, but this is the way it works.
+
+
+
+------------------
+The real (measured) values of heads temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    QS_256: Head1 temperature; PQ_512: Head "half1" temperature
+TAppHeadStatus::Temperature2    QS_256: Head2 temperature  PQ_512: Head "half2" temperature
+TAppHeadStatus::Temperature3    Aux1 temperature 
+TAppHeadStatus::Temperature4    Aux2 temperature
+
+
+
+
+

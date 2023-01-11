@@ -1,0 +1,55 @@
+=================================================================================================
+    Some information on nozzle layout for the Epson I3200-A1 head
+=================================================================================================
+
+This document shows head nozzle layout from our HDC point of view.
+Epson's specs are very confusing and contradict to each other.
+
+Important! The picture below is a view THROUGH the head on to the paper.
+
+
+
+            ASIC3        ASIC2        ASIC1        ASIC0   <- ASIC number (Chip4..1 in Epson terminology)
+    
+
+            H  G         F  E         D  C         B  A    <- Epson nozzle rows notation, used only to work out colours
+                                                              
+
+            ...O............O............O............O    <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            O............O............O............O       
+               O            O            O            O
+            O            O            O            O
+               O            O            O            O
+            ....         ....         ....         ....
+
+            O            O            O            O
+               O            O            O            O
+            O            O            O            O
+                                                       
+                
+                
+            A  B         A  B         B  A         B  A    <- Our ASIC nozzle row notation
+
+           C1  C2       C3  C4       C4  C3       C2  C1   <- Head colour index (the way ink is plumbed in the head)
+           |   |        |   |         |  |         |  |
+           |   |        |   `---------'  |         |  |
+           |   |        `----------------'         |  |
+           |   `-----------------------------------'  |
+           `------------------------------------------'
+
+
+
+
+Ink ports to colour planes mapping.
+
+There are 4 ink ports in this head [Port1..Port4]. If we mount the head at Orientation 0, and look THROUGH 
+the head on to the paper, then ink Port1 will be on the left, and it is the _closest_ to the head edge. 
+So, ink ports numbers 1..4 will be arranged from the left to right.
+
+    ink Port1   -> rows A,H -> C1 -> Meteor colour Plane1   *:1:1
+    ink Port2   -> rows B,G -> C2 -> Meteor colour Plane2   *:1:2
+    ink Port3   -> rows C,F -> C3 -> Meteor colour Plane3   *:1:3
+    ink Port4   -> rows D,E -> C4 -> Meteor colour Plane4   *:1:4
+
+If your ink ports do not have this mapping, or you are not printing with 4 colours, then you should use the I3200_HD head typ.
+It gives finer control for printing specific nozzle rows to specific colour planes.

@@ -1,0 +1,99 @@
+=================================================================================================
+    Some information on how to read head EEPROM data using TestApp
+=================================================================================================
+
+Many print head types have EEPROM. This EEPROM is used for storing information like head serial number, 
+manufacturing date, recommended voltages etc. 
+
+In a general case every head type has its own unique set of EEPROM data and the way to interpret this data.
+There used to be legacy PrintEngine API functions, like PiGetRG4HDCEeprom() that were aimed at specific 
+heads/HDCs, but thy are no longer supported and not recommended to use.
+
+Instead, a new generic API PiGetEepromData() should be used. It accepts PCC and HDC indices (1..N) as parameters and
+returns head EEPROM data represented as JSON-style text string.
+
+As soon as EEPROM information is unique for every head type, JSON format has a set of unique fields for every 
+head type. It is up to the user application to parse JSON and make sense of its contents.
+
+
+The simplest way to take a look at head EEPROM data is to use TestApp. There is "GetHead EEPROM data" button on the "Status"
+tab that is a direct interface to PiGetEepromData() API.
+
+In order to use it, it is required:
+    * PCC/HDC head should be powered up somehow (Using Monitor or other application)
+    * Status tab "PCC" and "HDC" drop down boxes should contain correct PCC and HDC numbers, they are API parameters.
+
+If everything is fine, "GetHead EEPROM data" button will open a window with head EERPOM contents decoded and formatted
+as JSON.
+
+For example, Ricoh Gen5 EEPROM contents may look as follows:
+
+
+{
+  "#DataValid" : true,
+  "#HeadType" : "HT_RG5",
+  "#InfoType" : "Head EEPROM Data",
+  "01-01-01-01" : 
+  {
+    "Current drop count" : "408688857",
+    "First use" : "25/3/2019",
+    "Last updated" : "2/4/2019",
+    "LineA Vpp1" : "19.00V",
+    "LineA Vpp2" : "00.00V",
+    "LineB Vpp1" : "19.27V",
+    "LineB Vpp2" : "00.00V",
+    "LineC Vpp1" : "18.54V",
+    "LineC Vpp2" : "00.00V",
+    "LineD Vpp1" : "18.53V",
+    "LineD Vpp2" : "00.00V",
+    "Part Number" : "N221414K",
+    "Serial Number" : "1508-080706K"
+  }
+}
+
+Explanation:
+
+    - fields that start with "#" character represent METADATA, i.e. they aren't the part of head EEPROM data, they 
+      provide higher level data description and exist always. For Example:
+
+      "#DataValid" 'true' if EEPROM data read OK and validated, 'false' otherwise (try power the head OFF and see what happens)
+      "#HeadType"  describes head type
+      "#InfoType"  describes what type of data it is
+  
+    - "Head EEPROM data" term actually means "EEPROM data for all heads on selected PCC:HDC". Some HDCs can drive multiple
+      heads, some heads can have dedicated EEPROM chips for every JA. So, JSON structure really depends on the system set up.
+
+      JSON object keys like "01-01-01-01" in the example above are PeAddresses of the HDC/Head objects. In this example
+      it means PCC:1, HDC:1, Head:1, JA:1
+
+      And the object itself is decoded EEPROM data as "name-value" pairs.
+  
+    - Keys in JSON are sorted alphabetically, there is no way to change it.
+
+    - head EEPROM reading process is asynchronous, it starts as soon as the head is powered and it takes some time to 
+      finish (usually several seconds). 
+      The only proper way to ensure that EEPROM data is ready for the user is to call PiGetEepromData() 
+      and look for "#DataValid" : 1 metadata flag.
+
+    - "LogEepromData" logging category enables EEPROM logging into the Meteor log file,
+      "LogRawEeprom" category logs raw EEPROM data and usually intended for debugging purposes.
+
+
+    - Some printheads have EEPROM chips on them, but they can be blank (contains all 0xFF). Seiko heads seem to be 
+      such a case.        
+
+
+-----------
+
+Note that obtaining EEPROM data is an asynchronous process an can take quite a long time.
+First of all, it may take several seconds to power up a driver board and wait until it gest ready.
+After powering up the EEPROM reading sequence starts, it is not very fast process either. It can take up to 
+several seconds to complete.
+The only way to ensure that EEPROM reading finished Ok is to periodically read result in JSON format and 
+check for   '"#DataValid" : true' tag.
+
+
+
+
+
+

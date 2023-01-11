@@ -1,0 +1,50 @@
+=================================================================================================
+    
+    Some information regarding a feature that allows to control HDC power via PCC GPIO
+
+=================================================================================================
+
+
+It is possible to enable feature that allows controlling HDC (head) power via PCC GPIO input.
+If enabled, then all HDCs on ALL PCCs be forced to power ON when selected GP input has INACTIVE state 
+(i.e left floating or pulled to +3.3 volts). And as soon as that selected GP input becomes ACTIVE (pulled to 0V)
+ALL HDCs on ALL PCCs will be powered OFF.
+
+
+To configure this feature "HeadPowerIn" key should be used in a config file in [Head] section.
+    
+"HeadPowerIn" key values are:
+    0       - default, this feature is disabled
+    1..4    - use corresponding PCC GP input[1..4] that will be used to control HDCs power.
+
+
+For example:
+
+    [Xaar2001]
+    HeadPowerIn = 1 ;-- use PCC GP Input 1 to control HDCs power. Applies to ALL PCCs and HDCs in the system
+
+This feature is currently supported by following print head types:
+
+    HT_STARFIRE (Dimatix SG1024)
+    
+    HT_KJ4
+    HT_K1200
+    HT_K150
+    HT_K300
+    HT_K600
+
+    HT_HSS      (Xaar 1001, 1002, 1003)
+    HT_Xaar2001 (Xaar 2001/2002)
+
+
+When "HeadPowerIn" functionality is used, the controlling application should not use the PrinterInterface
+commands which control head power (PiSetHeadPower or SIG_HDPOWER).
+
+If MetPrint is being used as the application software, by default it will always try to power on the print
+heads when it sees that PCC hardware is connected.  
+
+This behaviour can be changed by adding
+
+   [Application] DisableHeadPower = 1 
+
+to the configuration file, which prevents MetPrint from using the head power API commands.

@@ -1,0 +1,32 @@
+=================================================================================================
+    Some information regarding  Epson S800 head voltages / temperatures  
+=================================================================================================
+
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+    TAppHeadStatus::Voltages[0]  -> HDC supply current, ma
+    TAppHeadStatus::Voltages[1]  -> VHV voltage,  10x scaled
+    TAppHeadStatus::Voltages[2]  -> VBS voltage,  10x scaled
+    TAppHeadStatus::Voltages[3]  -> VH voltage,   10x scaled
+
+
+    TAppHeadStatus::Temperature1 -> head temperature.
+
+    TAppHeadStatus::Temperature2 -> high 16 bits: B1 amplifier, low 16 bits: A1 amplifier temperatures
+
+    # these values are currently read from HDC-ES3200 that is designed for ES3200, in the future 
+    # they may become irrelevant
+    TAppHeadStatus::Temperature3 -> high 16 bits: B2 amplifier, low 16 bits: A2 amplifier temperatures
+    TAppHeadStatus::Temperature4 -> high 16 bits: B3 amplifier, low 16 bits: A3 amplifier temperatures
+    TAppHeadStatus::Temperature5 -> high 16 bits: B4 amplifier, low 16 bits: A4 amplifier temperatures
+
+
+
+

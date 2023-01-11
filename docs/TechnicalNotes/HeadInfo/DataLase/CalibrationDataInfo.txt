@@ -1,0 +1,109 @@
+=================================================================================================
+    
+Some information on the calibration data (waveform) files for DataLase96 head.
+
+=================================================================================================
+
+--- General information about WF file format:
+
+Waveform (or calibration data) format was inherited from the original DataLase one:
+For every laser ( or "nozzle") there is a set of 10 12-bit values that specify power level and TOn dependency
+on the input grey scale value X=[0, 255]. 
+First 5 values specify linear interpolation data for laser power (Y-values) at points X=0,64,128,192,255 and other 
+5 values specify the same sort of mapping for the TimeOn (Z-values).
+
+The WF file format is pretty basic, it is a set of data records for every nozzle in one head, (96 nozzles in total).
+
+An example:
+
+T000:1EF,30C,365,431,530:000,000,000,000,7D0 ;-- data for nozzle 0
+T001:1EF,2DA,35B,42C,530:000,000,000,000,7D0 ;-- data for nozzle 1
+[...]
+T05F:13B,2D0,329,3B4,4C2:000,000,000,000,7D0 ;-- data for nozzle 95
+ \ / \-----------------/ \-----------------/
+  ^                ^             ^
+  |                |             |
+nozzle number      |             +---- Z: points of TOn interpolation data, 
+[000, 05F]         |                      12-bit values.  
+                   |
+      Y: 5 points of power level
+      interpolation data, 12-bit   
+      values  
+
+
+WF file can contain comments that start from ';' and empty lines. 
+
+Also it is possible to have only one special record that specifies default data record for if Txxx record it it is 
+not found.
+E.g:
+TAll:100,302,345,431,530:001,002,003,004,7D0
+
+If calibration data records for all nozzles are absolutely the same, it is possible to have just one "TAll" record in the file.
+
+There is a default example calibration data file: "\Waveform\DataLase\DL96_Cal_Table_Example.txt"
+
+--- Hardware configuration:
+
+    * DataLase96 head has 96 physical nozzles (lasers) in one row; HDC drives 1 head.
+    It is possible to use individual waveform for every head on PCC.
+
+--- Waveforms configuration:
+
+    * Waveforms data is stored files, e.g. "DL96_Cal_Table_Example.txt"
+    * These file names/paths are listed in "head section". e.g [DataLase96]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+
+    Configuration example:
+
+    [DataLase96] ;-- "head" section
+    Waveform1 = "Waveform\DataLase\DL96_Cal_Table_Example.txt"  ;-- WF1  
+    Waveform2 = "Waveform\DataLase\DL96_Cal_Table_ExampleA.txt" ;-- WF2  
+    Waveform3 = "Waveform\DataLase\DL96_Cal_Table_ExampleB.txt" ;-- WF3  
+
+    [DefaultParameterValues]  ;--- Global system level 
+    WaveformFileIdx = 1       ;--- All heads in the system will use waveform:  "DL96_Cal_Table_Example.txt"    
+        
+
+    [Controller1]             ;--- PCC level, (overrides settings in [DefaultParameterValues] section) 
+    WaveformFileIdx  = 1,2,1,2,2,3,1,1 ; WF indices for head1..head8 respectively on PCC1
+
+
+    [HeadDriver1:1]           ;--- HDC level (overrides settings in [Controller1] section)
+    WaveformFileIdx = 3       ;--- PCC1, HDC3 will use WF index 3   
+
+
+--- Calibration data modes.
+
+There are 3 parameters in the config file that describe how to use calibration data. All of them can be specified
+in [DefaultParameterValues] , [ControllerX], [HeadDriverX:Y] the same way as "WaveformFileIdx" one.
+
+These parameters are:
+
+* Laser Calibration Mode parameter. Name: "CalibrationMode",  Valid values: 0,1,2
+    0           -> Use both Power and TOn interpolation data from the WF file 
+    1(default)  -> use only power interpolation data, TOn is 255 (constant)  
+    2           -> use TOn interpolation data, Power level is 255 (constant)
+
+
+
+* Power Interpolation Mode parameter. Name: "Pwr_IntMode",  Valid values: 0,1,2
+    0           -> Use 2 points for interpolation (at X = 0 and 255) 
+    1           -> Use 3 points for interpolation (at X = 0, 128 and 255) 
+    2 (default) -> Use 5 points for interpolation (at X = 0, 64, 128, 192 and 255) 
+
+
+
+* TOn Interpolation Mode parameter. Name: "TOn_IntMode",  Valid values: 0,1,2
+    0           -> Use 2 points for interpolation (at X = 0 and 255) 
+    1           -> Use 3 points for interpolation (at X = 0, 128 and 255) 
+    2 (default) -> Use 5 points for interpolation (at X = 0, 64, 128, 192 and 255) 
+
+
+
+
+
+
+
+
+

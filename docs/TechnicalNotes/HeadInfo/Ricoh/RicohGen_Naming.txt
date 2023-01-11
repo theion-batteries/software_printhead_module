@@ -1,0 +1,70 @@
+=================================================================================================
+    Some information on Ricoh Gen5/6 head family naming
+=================================================================================================
+
+
+===============================================================
+GEN5: nozzle row spacing - 13/279 pixels at 600dpi
+
+    * The MH5420 is 2-colour with a 7pL drop and fixed cable (so the original GEN5)
+    * The MH5440 is 4-colour with a 7pL drop and fixed cable
+    * The MH5421 is 2-colour with a 7pL drop, and fixed cable. But specified for Aq ink only.
+    * The MH5441 is 4-colour with a 7pL drop, and fixed cable. But specified for Aq ink only.
+    * The MH5421F and MH5421MF are recirculating versions and have a detachable cable. The MF is for lower viscosity inks.
+
+
+    Hardware | Meteor head type |  Name in config file | Head sub-type
+    ---------+------------------+----------------------+--------------
+     HDC-R   | HT_RG5           |  "RicohGen5"         |    0
+    HMB-2R5  | HT_RicohGen5     |  "Ricoh_Gen5"        |    0
+    ---------+------------------+----------------------+--------------
+
+
+
+===============================================================
+GEN5S: nozzle row spacing - 22/220 pixels at 600dpi
+
+    * The MH5220 is the GEN5S is specified for UV ink only, has a 2.5pL drop, and a detachable cable
+
+
+Meteor head type: HT_RG5,       Name in config file: "RicohGen5",   Head sub-type: 1 
+(HMB-2R5 only)  : HT_RicohGen5, Name in config file: "Ricoh_Gen5"   Head sub-type: 1 
+
+
+    Hardware | Meteor head type |  Name in config file | Head sub-type
+    ---------+------------------+----------------------+--------------
+     HDC-R   | HT_RG5           |  "RicohGen5"         |    1
+    HMB-2R5  | HT_RicohGen5     |  "Ricoh_Gen5"        |    1
+
+
+
+
+===============================================================
+GEN6: nozzle row spacing - 26/279 pixels at 600dpi. These heads are newer and faster than the GEN5 heads and have a longer service life.
+
+    * The MH5320 is 2-colour with a 5pL drop and a detachable cable. 
+    * The MH5340 is 4-colour with a 5pL drop and a detachable cable
+    * The MH5320 type A is some other variant. Spec says it has 4 colours and no ink ports, but that sounds unlikely!
+
+
+    Hardware | Meteor head type |  Name in config file | Head sub-type
+    ---------+------------------+----------------------+--------------
+     HDC-R   | HT_RG5           |  "RicohGen5"         |    2
+    HMB-2R5  | HT_RicohGen5     |  "Ricoh_Gen5"        |    2
+
+
+===============================================================
+GEN6_Fast: Everything is the same as for GEN6, but the head allows faster (up to 30V/us) WF slew rates.
+Also, waveform amplitude is limited to 22.0 Volts.
+
+    * The MH5422 is 2-colour variant
+    * The MH5442 is 4-colour variant
+
+
+    Hardware | Meteor head type |  Name in config file | Head sub-type
+    ---------+------------------+----------------------+--------------
+     HDC-R   | HT_RG5           |  "RicohGen5"         |    3
+    HMB-2R5  | HT_RicohGen5     |  "Ricoh_Gen5"        |    3
+
+
+

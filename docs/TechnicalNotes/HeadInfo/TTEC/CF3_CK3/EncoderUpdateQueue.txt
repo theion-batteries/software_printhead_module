@@ -1,0 +1,41 @@
+=================================================================================================
+    Encoder Update Queue information.
+=================================================================================================
+
+The FPGA maintains a FIFO queue for updating the encoder multiply / divide register during a print job.
+
+These updates to the encoder multiply / divide register are triggered by a match with the absolute X count and encoder direction.
+
+The application adds updates to the queue using the PiSetSignalEx API with the SIGEX_ENCODER_UPDATE signal.
+
+The parameters for this signal are as follows (also see the PrinterInterfaceCLS.chm help file)
+
+data[0] = SIGEX_ENCODER_UPDATE
+data[1] = Print Engine address: [Bits31:24] PccNum;  [Bits23:16] HdcNum;  [Bits15:0] Unused (should be zero).  PccNum must be the index of a master PCC. 
+data[2] = [Bit24] Direction 1=Fwd 0=Rev; [Bits23:0] XCount at which the encoder multiply / divide is changed
+data[3] = [Bits31:24] Unused, must be zero; [Bits23:8] New encoder divider; [Bits7:0] New encoder multiplier
+
+The FIFO queue size is 512 DWORDs and each update uses 3 DWORDs.
+
+Therefore the maximum number of register updates which can be pending at any one time is 170.
+
+If the FIFO queue is full, PiSetSignalEx will return RVAL_FULL and the log will show "PrintEngine::PccV2::SetSignalEx() ### SIGEX_ENCODER_UPDATE: queue is full"
+
+In this situation the application should retry later once the system has had opportunity to consume some of the updates.
+
+Each update sent to SIGEX_ENCODER_UPDATE happens once only.  So for a scanning system to behave the same on every pass, the application must send the
+register updates before every pass.
+
+** IT IS IMPORTANT THAT CONSECUTIVE SIGEX_ENCODER_UPDATE CALLS DO NOT USE IDENTICAL data[2] (direction/position) VALUES **
+** IN THIS SITUATION MULTIPLE UPDATES CAN TRIGGER AT THE SAME TIME **
+
+The queue is cleared by calling PiAbort
+
+Additional logging from the PCC can be enabled by adding the following parameters to the configuration file
+
+[Test]
+LogRegWriteQueueStatus = 1
+PccE_LogToDbgPort = 1;
+PccE_LogModules = "Errors|Info"
+
+This provides raw register logging which can be useful for troubleshooting.

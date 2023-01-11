@@ -1,0 +1,161 @@
+=================================================================================================
+    Some information on nozzle layout for the Epson I3200-A1HD head
+=================================================================================================
+
+This document shows head nozzle layout from our HDC point of view.
+
+Important! The picture below if a view THROUGH the head on to the paper.
+
+-------------------------------------------------------------------------------------------------
+-------- This is the 2-colour variant of the I3200-A1HD head, which prints at 1200DPI -----------
+-------- There are 2 different ways to interlace the rows, this is HeadSubType 0      -----------
+-------- Set using [DefaultParameterValues] HeadSubType = 0                           -----------
+-------------------------------------------------------------------------------------------------
+
+            ASIC3        ASIC2        ASIC1        ASIC0   <- ASIC number (Chip4..1 in Epson terminology)
+    
+
+            H  G         F  E         D  C         B  A    <- Epson nozzle rows notation, used to work out colours
+                                                              
+
+            ................O.........................O    <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+
+             ...         ...           ...        ...
+
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+                
+            A  B         A  B         B  A         B  A    <- Our ASIC nozzle row notation
+
+           C1  C1       C2  C2       C2  C2       C1  C1   <- Head colour index (the way ink is plumbed in the head)
+            |  |         |  |         |  |         |  |
+            |  |         '--'---------'--'         |  |
+            '--'-----------------------------------'--'
+
+-------------------------------------------------------------------------------------------------
+-------- This is the 2-colour variant of the I3200-A1HD head, which prints at 1200DPI -----------
+-------- There are 2 different ways to interlace the rows, this is HeadSubType 1      -----------
+-------- Set using [DefaultParameterValues] HeadSubType = 1                           -----------
+-------------------------------------------------------------------------------------------------
+
+            ASIC3        ASIC2        ASIC1        ASIC0   <- ASIC number (Chip4..1 in Epson terminology)
+    
+
+            H  G         F  E         D  C         B  A    <- Epson nozzle rows notation, used to work out colours
+                                                              
+
+            ................O.........................O    <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+
+             ...         ...           ...        ...
+
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+                
+            A  B         A  B         B  A         B  A    <- Our ASIC nozzle row notation
+
+           C2  C2       C2  C2       C1  C1       C1  C1   <- Head colour index (the way ink is plumbed in the head)
+            |  |         |  |         |  |         |  |
+            '--'---------'--'         '--'---------'--'
+
+-------------------------------------------------------------------------------------------------
+-------- This is the 4-colour variant of the I3200-A1HD head, it has 4 ink ports ----------------
+-------------------------------------------------------------------------------------------------
+
+            ASIC3        ASIC2        ASIC1        ASIC0   <- ASIC number (Chip4..1 in Epson terminology)
+    
+
+            H  G         F  E         D  C         B  A    <- Epson nozzle rows notation, used to work out colours
+                                                              
+
+            ................O.........................O    <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+
+             ...         ...           ...        ...
+
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+                
+            A  B         A  B         B  A         B  A    <- Our ASIC nozzle row notation
+
+           C1  C2       C3  C4       C4  C3       C2  C1   <- Head colour index (the way ink is plumbed in the head)
+            |  |         |  |         |  |         |  |
+            |  |         |  `---------'  |         |  |
+            |  |         `---------------'         |  |
+            |  `-----------------------------------'  |
+            `-----------------------------------------'
+
+
+There are 4 ink ports in this head. They map to Meteor colour planes by default as follows: 
+
+    ink PortA   -> rows A,H -> C1 -> Head mapping *:1:1
+    ink PortB   -> rows B,G -> C2 -> Head mapping *:1:2
+    ink PortC   -> rows C,F -> C3 -> Head mapping *:1:3
+    ink PortD   -> rows D,E -> C4 -> Head mapping *:1:4
+
+-------------------------------------------------------------------------------------------------
+-------- This is the 8-colour variant of the I3200-A1HD head, it has 8 ink ports ----------------
+-------------------------------------------------------------------------------------------------
+
+            ASIC3        ASIC2        ASIC1        ASIC0   <- ASIC number (Chip4..1 in Epson terminology)
+    
+
+            H  G         F  E         D  C         B  A    <- Epson nozzle rows notation, used to work out colours
+                                                              
+
+            ................O.........................O    <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+
+             ...         ...           ...        ...
+
+            ................O.........................O
+            ...O.........................O.............
+            .............O.........................O...
+            O.........................O................
+                
+            A  B         A  B         B  A         B  A    <- Our ASIC nozzle row notation
+
+           C8  C7       C6  C5       C4  C3       C2  C1   <- Head colour index (the way ink is plumbed in the head)
+
+
+There are 8 ink ports in this head. They map to Meteor colour planes by default as follows: 
+
+    ink PortA   -> row A -> C1 -> Head mapping *:1:1
+    ink PortB   -> row B -> C2 -> Head mapping *:1:2
+    ink PortC   -> row C -> C3 -> Head mapping *:1:3
+    ink PortD   -> row D -> C4 -> Head mapping *:1:4
+    ink PortE   -> row E -> C5 -> Head mapping *:1:5
+    ink PortF   -> row F -> C6 -> Head mapping *:1:6
+    ink PortG   -> row G -> C7 -> Head mapping *:1:7
+    ink PortH   -> row H -> C8 -> Head mapping *:1:8

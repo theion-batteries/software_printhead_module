@@ -1,0 +1,34 @@
+=================================================================================================
+    Some information about EpsonI3200 head configuration driven by HMB-3EI3200
+=================================================================================================
+
+
+
+-- Hardware configuration:
+    HMB-3EI3200 drives three EpsonI3200 heads. Default Meteor config file is: "DefaultEpsonI3200_PccZ.cfg"
+
+
+-- Notes on PCC/HDC/Head configuration:
+    Basically, HMB-3EI3200 is a usual PCC that drives 3 HDCs, each HDC drives one head. The only thing that
+    PCC+HDCs are located on the same PCB. So, heads addressing looks as follows:
+
+        Head1 on HMB5 ->  PCC:5, HDC:1, Head:1
+        Head2 on HMB5 ->  PCC:5, HDC:2, Head:1            
+        Head3 on HMB5 ->  PCC:5, HDC:3, Head:1            
+    
+    Note that head index is always 1 (HDC drives one head only), but HDC index specifies which "head" is
+    being addressed.
+
+
+-- Colour planes
+
+EpsonI3200 is made of 4 "Chips" in Epson terminology or ASICs. Each ASIC has 2 nozzle rows 400 nozzles each, 800
+nozzles per whole ASIC. Thus, total number of nozzes per whole head is 4*800.
+
+But the head print swath is still 800 nozzles, because all ASICs are located in parallel in X-direction and nozzles
+from different colour planes print at the same Y-position, on top of each other.
+
+The head by design has 4 ink ports.  Meteor system must be configured as 4 colour planes per head.
+Any other configuration will produce an error and won't print correctly. 
+
+

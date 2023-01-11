@@ -1,0 +1,269 @@
+=================================================================================================
+Some information on the waveform files for Epson I3200 head family 
+=================================================================================================
+
+   
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is 1 to 8 
+    (this head has max BPP value 2). Pulse numbers start from 0. 
+
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments". 
+    Number of segments in the pulse is usually 2 or more, they are described by keys  Seg0..Seg31 in a pulse section. 
+    Segments numbering should be sequential, no gaps allowed.
+    There is one special case: a pulse can be made of one segment in case when segment start and end 
+    voltages are the same and slew rate is 0. This is for simpler generation of "flat" pulses.
+
+*   Max. total number of segments in a whole WF is 32; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                ___.
+         .\   .       .  /   .
+         . \__.       . /    .
+         .    .\      ./     .
+         .    . \-----.      .
+         .    .       .      .
+           S0     S1     S2
+
+
+
+
+* Waveform constraints:
+
+ - 1..8 pulses per Waveform, 1..32 segments per pulse, up to 32 segments in total.
+ - Whole WF should start and end at the same voltage.
+ - WF start voltage must be >= VIdle, which is 6.0v, see specs
+ - WF min voltage must be >= "Base Voltage" which is 2.5v, see specs
+ - WF max voltage is 37.5 volts.
+ - No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ - No voltage discontinuity between segments within one pulse
+ - Hold time can't be < 25ns and > 1024*25ns = 25600ns
+ - slew rate: segment raising or falling edge duration can't be < 25ns and > 1024*25ns
+ - If head uses different waveforms for its ASICs (JAs), then there are additional constraints applied, see below
+
+
+
+
+=================================================================================================
+     Hardware configuration:
+=================================================================================================
+    
+    * HMB-3EI3200 drives 3 heads        
+    * EI3200 head has 4 "chips" or "ASICs". They are referred as Jetting Assemblies (JAs) by Meteor.
+    * Every ASIC drives 2 nozzle rows: rowA and rowB 
+
+
+    * it is possible to specify an optional "tickling waveform" that applies to the head the same way
+      as normal working one, but only when there is no encoder pulses (head is idle). 
+      In order to achieve this a parameter "TickleWaveformFileIdx" can be specified. Its default value 
+      is 0, which means "tickling is disabled". It it has a value of a correct waveform file index, then 
+      corresponding waveform will be used as tickling one.
+
+
+    * Waveforms applied to head's individual ASICs can have different scaling factor. 
+      See "WF voltage scaling" section for more details.
+
+    * It is possible to assign each ASIC its individual waveform (including tickling one). In this case
+      there are additional TIME constraints for these waveforms:
+
+        - all waveforms within the head must have exactly the same number of pulses
+        - across all waveforms their pulses must have the same duration, i.e 
+          [WF_0, pulse0] length must be the same as [WF_1, pulse0], [WF_2, pulse0]... etc.
+          [WF_0, pulse1] length must be the same as [WF_1, pulse1], [WF_2, pulse1]... etc.
+          ....
+        - As a consequence, all waveforms within the head must have the same total length.
+
+      On the other hand, different wavforms for individual ASICs might have different voltages and segments, so,
+      it is only timings that have restrictions.   
+    
+      Working/tickling wavefomrs treated independently.  
+
+
+    * Within an ASIC both its nozzle rows: RowA and RowB share the same waveform.
+
+
+
+    Configuration example:
+
+    [EPSON_I3200] ;-- "head" section
+    Waveform1 = "Waveform\Epson\I3200\TestI3200_Waveform_VSD1.txt" ; Default VSD1 waveform file
+    Waveform2 = "Waveform\Epson\I3200\TestI3200_Waveform_VSD2.txt" ; Default VSD2 waveform file
+    Waveform3 = "Waveform\Epson\I3200\I3200Tickle_Waveform"        ; tickling WF
+
+
+    ;--- Global system default settings
+    [DefaultParameterValues]
+    WaveformFileIdx       = 1 ; Global default value
+    TickleWaveformFileIdx = 0 ; Don't use tickling waveforms
+
+
+    [Controller1]             ;--- PCC level (overrides settings in [DefaultParameterValues] section)
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveforms:  "TestI3200_Waveform_VSD1.txt"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveforms: "I3200Tickle_Waveform"   
+
+    ;--- settings specific for PCC1:HDC1 (head1 on HMB1)
+    [HeadDriver1:1]
+    WaveformFileIdx = 2 ; WaveformID applied to the whole head on this HDC
+
+    ;--- settings specific for PCC1:HDC2 (head2 on HMB1)
+    [HeadDriver1:2]
+    WaveformFileIdx = 1     ; WaveformID applied to the whole head on this HDC
+    WF_VScale_Coeff=  1.05  ; WF scaling coefficient for the whole head
+
+    ;--- settings specific for PCC1:HDC3 (head3 on HMB1)
+    [HeadDriver1:3]
+    WaveformFileIdx = 2     ; WaveformID applied to the whole head on this HDC
+    WF_VScale_Coeff=  0.98  ; WF scaling coefficients for the whole head
+
+
+    [Head1:1]  ;--- Head level (overrides settings in [HeadDriver1:1] section)
+    WF_VScale_Coeff= 1.0, 1.1, 0.95, 0.98 ;-- WF scaling coefficients for ASIC1..ASIC4 correspondingly    
+    WaveformFileIdx = 1,1,2,2 ; JA1, JA2 get waveform with index1, JA3,JA4 get waveform with index2          
+    
+
+=================================================================================================
+    waveform specifics.
+=================================================================================================
+
+==== Pulses and Grey level masks
+    
+As mentioned above, a waveform can have up to 8 pulses and it is possible to specify if this 
+particular pulse will be printing for the given grey level.  
+It is achieved by "Grey Level Mask". It has 4 bits that are set if this pulse will be printing
+for the given grey level.  
+
+Some GLMask examples:
+
+                3210 <- Grey level value                        
+                ||||                                            
+pulse   0x08 -> 1000   prints for GL value 3                
+mask    0x0c -> 1100   prints for GL value 3,2                
+value:  0x0e -> 1110   prints for GL value 3,2,1                
+        0x04 -> 0100   prints for GL value 2 
+
+The typical mask value is 0x0E, which means that this pulse will be used for printing for GL values 3,2,1 and
+won't print for GL value 0.                
+
+Note that the waveform for I3200 head can contain more than 4 pulses, despite that max BPP is 2. This is 
+because some pulses inside waveform are "tickling" ones, they don't eject drops, but uses to agitate ink instead.
+
+
+=================================================================================================
+    waveform scaling
+=================================================================================================
+
+Waveforms scaling is a simple way to slightly adjust waveform voltages without changing much
+WF shape. It is usually much simpler than editing each individual waveform in an editor, and it 
+uses just a couple of parameters that can be set up in Meteor config file or via SetParamEx() API.
+Because of its simplicity it has a pretty limited functionality.
+
+
+Probably the most common case of using WF scaling is adjusting print intensity of the individual ASICs within one
+head. Recommended ASIC waveform voltages can be obtainned from the head EEPROM data (see "HeadEepromData.txt"), voltage
+codes are also included into QR code on head packaging.
+In this case one waveform can be used for the whole head, but it may be scaled slightly differently for individual
+head ASICs.
+
+As mentioned earlier, waveform is made of a number of Pulses, and every Pulse is made of 
+a number of Segments.  An example of a typical WF pulse made of 3 segments is shown below:
+
+
+
+           . Seg0  .<--- Seg1 --->.<-Seg2-> .
+           .       .              .         .
+           .       .       /------.         .
+           .       .      /       .\        .
+           .       .     /        . \       .
+  VStart-> \       .    /         .  `------. <- VEnd
+           .\      .   /          .         .   
+           . \     .  /           .         .   
+           .  \    . /            .         .    
+  VBase->  .   \___./             .         .         
+           .       .              .         .
+    0V->  ------------------------------------------------
+
+
+==== Waveform voltages scaling options: 
+
+    -- scaling mode
+    WF voltage adjustment (scaling) has 2 modes: 
+        * keeping WF segments hold time (slew rate changes)
+        * keeping WF slew rate constant (segment hold time changes)
+
+    -- Waveforms scaling (similar to other head types with trapezoidal waveforms)
+    Scaling coefficient is used as a multiplier to the WF voltage from WF file. 
+    As a result, ALL voltages are changed, including VStart and VEnd.
+    VStart and VEnd for every pulse (and whole WF) are scaled the same way, so, the WF remains continuous. 
+
+    Waveform base voltage VBase(2.5V) is preserved and remains the same.
+
+    For example, if we have a waveform with voltage range [2.5, 25.0] Volts and use WF_VScale_Coeff=1.2, then
+    the result voltage range will be: [2.5, 29.5] Volts: 2.5 + (25.0-2.5)*1.2 == 29.5
+
+    If due to scaling WF voltages/timings go out of valid range, then error message is logged and waveform is ignored.
+
+
+==== Waveform voltages scaling configuring:
+
+    -- scaling mode parameter:    
+
+    name:WF_VScale_Mode, id:CPEX_WF_VScaleMode, valid range:[1,2], def:1.0, scope:ANY.
+
+    "WF_VScale_Mode" parameter specifies mode of scaling: either keeping pulse width (and whole WF length) constant or 
+    keeping slew rate and pulse hold time constant. If scaling mode is 0 there will be no scaling at all.
+    Possible values are:  0:scaling disabled (default), 1:keep pulse width, 2:keep slew rate
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+
+    -- Waveforms scaling parameter:
+    name:WF_VScale_Coeff, id:CPEX_WF_VScaleCoeff, valid range:[0.5, 1.5], def:1.0, scope:ANY.
+    "WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+    
+    Some brief config file example:
+
+    ;--- settings specific for PCC1:HDC1
+    [HeadDriver1:1]
+    WaveformFileIdx = 1 ; WaveformID applied to the whole head on this HDC
+
+    ;--- The following settings specific to head sides A & B on PCC1:HDC1:Head1.
+    ;--- Note that these settings override those above in  [HeadDriver1:1] section.
+    [Head1:1]
+    WF_VScale_Coeff= 1.0, 1.1, 0.95, 0.98       ;-- WF scaling coefficients for ASIC1..ASIC4 correspondingly
+
+
+
+
+
+
+
+

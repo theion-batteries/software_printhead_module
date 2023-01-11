@@ -1,0 +1,180 @@
+=================================================================================================
+Some information on how to send signals and set/get PrintEngine parameters using TestApp
+=================================================================================================
+
+TestApp is a handy tool that allows user to do a lot of various things, including sending signals and
+manipulating PrintEngine parameters. 
+It has GUI that allows calling API functions like PiSetSignal(), Set/GetParam(), Set/GetParamEx() etc. which
+can be useful for testing things. On the other hand, TestApp has never been designed to be a fully - fledged
+control application, and some of its parts can be quirky.
+
+-------------------------------
+---- Sending signals to PrintEngine, PiSetSignal() API
+-------------------------------
+"Sending a signal" usually means "Setting a parameter" or "Invoking an action" in more or less real-time.
+This action doesn't require StartJob() or similar to take an effect.
+"more or less real-time" means that the client calls PiSetSignal(), then call goes to PrintEngine, it 
+checks parameters and usually sends a message to PCC that can decide to perform some actions. So, the 
+"signal" execution time in non-deterministic.
+
+API PiSetSignal(uint32 SignalId, uint32 State) sends SIG_* signal to selected PCC/HDC/Head 
+It uses following parameters:
+
+    * SignalId:                        
+        Byte 3 - additional address used for some signals, head type specific
+        Byte 2 - PCC Number [1..255]  or 0 for ALL (depends on  SIG_xxx) 
+        Byte 1 - HDC Number [1..8]    or 0 for ALL (depends on  SIG_xxx)
+        Byte 0 - one of SIG_xxx defined in Meteor.h               
+
+    * State:  value passed with the signal
+
+For example: In order to make print head spit, it is necessary to send SIG_SPIT along with PCC/HDC number; 
+State parameter specifies number of spits. If we want to make 200 spits on every PCC/HDC, 
+    SignalId will be: 0x00 00 0B
+                        ^^ ^^ ^^
+                         |  | |
+                         |  | +--- Byte0, SIG_SPIT
+                         |  +----- Byte1, ALL HDCs
+                         +-------- Byte2, ALL PCCs
+
+    State will be 200 or 0xC8
+
+Test APP has a simple GUI wrapper for this API. There is a box in "Scratch" tab, named "PiSetSignal API"
+
+"Id" field should contain "SignalId" parameter made of Byte3:Byte2:Byte1:Byte0 in hex (!). 
+    For our example this will be "00:00:00:0b".
+
+"Val" field should contain "State" parameter in Decimal(!). For our example this will be 200.
+
+Pressing "PiSetSignal" button will just call PiSetSignal() API with corresponding parameters.
+It is always a good idea to look at the log file to see if parameters are correct etc. 
+In our case following log lines should be observed:
+    [...]
+    SetSignal:0xb (SIG_SPIT) PCC:256, Hdc:256, xaddr:0, SigData:0x000000c8
+    Spit command, all listed heads, Count=200
+    [...]
+
+Also, it might be required to enable "Commands|Setup" logging categories to see how SIG_xxx is processed.
+
+
+
+-------------------------------
+---- Setting CCP_xxx PrintEngine parameters, PiSetParam() API
+-------------------------------
+
+This is the old legacy way of setting some PrintEngine parameters. Such parameters are defined in Meteor.h file
+and they have codes like CCP_xxx, CCP_BITS_PER_PIXEL for example.
+In order to do this PiSetParam(uint32 ParamId, uint32 Value) API should be used.
+Note that there is no way of reading parameter back from the PrintEngine.
+
+
+Note that changing parameters usually doesn't have an immediate effect on PrintEngine.
+It is usually required to have "StartJob" command for new parameter values to be applied.
+
+
+PiSetParam() uses following parameters:
+
+    * ParamId:
+        Byte 3 - "anum" depending on CCP_xxx code can be used to address parts of the print head, usually it is 0
+        Byte 2 - PCC Number [1..255]  or 0 for ALL (depends on  CCP_xxx) 
+        Byte 1 - HDC Number [1..8]    or 0 for ALL (depends on  CCP_xxx)
+        Byte 0 - one of CCP_xxx defined in Meteor.h               
+
+    * Value: Parameter value
+
+For example: CCP_BITS_PER_PIXEL parameter used to set BPP value.
+
+    ParamId will be: 0x00 00 00 26
+                       ^^ ^^ ^^ ^^
+                        |  |  | |
+                        |  |  | +--- Byte0, CCP_BITS_PER_PIXEL
+                        |  |  +----- Byte1, ALL HDCs
+                        |  +-------- Byte2, ALL PCCs
+                        +----------- Byte3, ignored for this parameter
+
+
+    Value will be 1 (for 1BPP)
+
+Test APP has a simple GUI wrapper for this API. There is a box in "Parameters" tab, named "PiSetParam API"
+
+"Id" field should contain "ParamId" parameter made of Byte3:Byte2:Byte1:Byte0, as a single 32-bit word in hex (!). 
+    For our example this will be "00000026".
+
+"Val" field should contain "Value" parameter in Decimal or in hex if it starts with '0x' prefix
+
+Pressing "SetParam" button will just call PiSetParam() API with corresponding parameters.
+It is always a good idea to look at the log file to see if parameters are correct etc. 
+In our case following log lines should be observed:
+    [...]
+    SetParam: CCP_BITS_PER_PIXEL (38) pcc 0 hnum 0 anum 0 val 1
+    Bits Per Pixel = 1 for HT_TTEC_CK3    
+    [...]
+
+
+-------------------------------
+---- Setting CPEX_xxx PrintEngine parameters, PiSetParamEx() / PiGetParamEx() API
+-------------------------------
+First of all, it is a good idea to read information regarding ConfigEngine, PeAddress, PeParams in order to understand
+things better. This information is covered in TechNotes, see "ConfigEngine" folder.
+
+CPEX_xxx parameters concept was introduced after it turned out that using PiSetParam() API and CCP_xxx parameters
+wasn't enough to cover all use cases. So, new parameters set and API was introduced, and it has nothing in common with
+legacy CCP_xxx parameters. These legacy parameters remained for backward compatibility.
+Thus, we have two independent APIs and Parameter groups that are almost independant of each other.
+
+Note that changing parameters usually doesn't have an immediate effect on PrintEngine.
+It is usually required to have "StartJob" command for new parameter values to be applied.
+
+
+Test App "Parameters" tab has a box called "PiSet/Get ParamEx API", and as before, this is a direct interface to the
+PiSetParamEx() and PiGetParamEx() PrintEngine API.
+
+There is a box for PeAddress, it is "user-style", when all objects are numbered from 1 and 0 means "ALL". 
+This box should contain 4 fields in hex, separated by ':', e.g. "1:2:3:0" -> PCC:1, HDC:2, Head:3, ALL JAs
+
+The 'Id' box should contain PeParameter identifier, one of the CPEX_xxx codes, it can be entered in decimal or 
+in hex with prefix '0x'. E.g. 0x11C or 284 for CPEX_WF_FileIdx.
+
+"Val" and "Div" fields contain PeParameter value and scaling factor respectively.
+
+
+Pressing button "GetParamEx" will call PiGetParamEx() API with provided PEAddress and fills in "Val" and "Div" fields.
+Pressing button "SetParamEx" will call PiSetParamEx() API with provided PEAddress, "Val" and "Div" fields. 
+
+Note that it is not possible read parameter if its address not fully specified, i.e. has '0' in one or several
+PeAddress fields.
+On the other hand, using objects group addressing (like "1:2:3:0") is pretty normal.
+
+In order to see results of PiGetParamEx()/PiSetParamEx() API calls in PritEngine log, it is required to enable "ConfigEngine"
+logging category in Meteor config file directly or in "Monitor" APP, "SetUp" tab.
+
+For example, Enter PeAddress "01:01:01:01", Id: 0x11c and press "GetParamEx" button.
+In PrintEngine log you will see something like:
+
+    CConfigEngine::GetFpParam(00:00:00:00, Id:0x11c, DefVal:1) => 1
+And "Val" filed will be populated with '1'
+So, you have successfully read CPEX_WF_FileIdx parameter value.
+
+
+Another example:
+
+Enter PeAddress "00:00:00:00", Id: 0x11c, Value:3, Div:1 and press "SetParamEx" button.
+In PrintEngine log you will see something like:
+
+    CConfigEngine::SetFpParam(ff:ff:ff:ff, Id:0x11c, Val:3)
+
+So, you have set CPEX_WF_FileIdx parameter value to 3 for EVERYTHING [*:*:*:*]
+!Note again that the change (new WF index) will be picked up by PrintEngine only after StartJob command.
+
+
+"ReloadParamEx" button just calls   PiReloadParamEx() API that reloads specified parameter from config file, i.e.
+reverts all changes to it.
+
+
+
+
+
+
+
+
+

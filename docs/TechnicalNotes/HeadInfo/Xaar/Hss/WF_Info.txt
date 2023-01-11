@@ -1,0 +1,43 @@
+=================================================================================================
+    
+Some information on the waveform files for Xaar1001-1003 heads (HSS).
+
+=================================================================================================
+
+--- system configuration:
+
+HDC drives one HSS (Xaar1001) head.
+HSS head is made of 2 Nozzle Rows or Jetting Assemblies (JAs). 
+
+----------------------- selecting head waveforms
+
+By default the waveform selected in the HSS config file applies to all heads within the system.
+
+It is possible to assign individual waveforms to a whole head on a given PCC:HDC
+Unfortunately, it is not possible to achieve this using Meteor config file.
+Instead, PiSetParam() API should be used for sending CCP_HEAD_WFILE_EX command. 
+
+CCP_HEAD_WFILE_EX command has followig arguments:
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - Is not used here and should be 0 
+     * Value  - WF file index.  
+
+
+
+----------------------- Palette files
+It is possible to use an optional palette to re-map grey level printed to a pixel value sent to the head.
+By default, 1:1 palette mapping is used, i.e grey level0 is mapped to pixel value = 0, 
+grey level1 is mapped to pixel value = 1, and so on.
+
+Such palette is a property of the waveform and therefore is logically "attached" to a concrete waveform file.
+Basically, if palette needs to be used, it should be placed in a "palette file", that has the same name as 
+waveform file and ".plt" extension. It needs to be placed to the same directory where the WF file is.
+
+For example, if we use WF file "SampleHssWaveform.txt", then its corresponding palette file will be 
+"SampleHssWaveform.plt"
+
+And its contents is just one line of the following values (for default mapping):
+
+0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+

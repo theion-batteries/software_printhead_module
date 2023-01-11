@@ -25,7 +25,9 @@ typedef enum {
    SIG_OUT2 = 0x00000001,   // Set the state of GPIO Output 2 (HDC or PCC)
    SIG_OUT3 = 0x00000002,   // Set the state of GPIO Output 3 (HDC or PCC)
    SIG_OUT4 = 0x00000003,   // Set the state of GPIO Output 4 (HDC or PCC)
-   SIG_OEN1 = 0x00000004,   // Output enable for HDC GPIO 1 signal
+   SIG_OEN1 = 0x00000004,   // Output enable for HDC GPIO 1 signal.  GPIO signals are not available on all HDCs : see hardware manual
+                            // for details.  On some HDCs the GPIO signals are bidirectional and default to inputs.  To enable a
+                            // signal as an output the corresponding SIG_OENx signals must be set to 1.
    SIG_OEN2 = 0x00000005,   // Output enable for HDC GPIO 2 signal
    SIG_OEN3 = 0x00000006,   // Output enable for HDC GPIO 3 signal
    SIG_OEN4 = 0x00000007,   // Output enable for HDC GPIO 4 signal
@@ -56,9 +58,10 @@ typedef enum {
                                   // instead of <see cref="F:Ttp.Meteor.SigTypes.SIG_PDINTERVAL" />
                                   // <i>xaddr </i>PCCE only: set to 1 to start the PD interval from an external PD
    SIG_SPIT = 0x0000000B,   // Do a number of spits (fire on every nozzle) on the specified HDC. It is also possible to spit on all HDCs, see parameters.
+                            // Spit frequency is 8000Hz by default and can be changed by sending SIG_SET_TICKLE_FREQ
                             // Set pccnum = 0 and hdcnum = 0 to spit on all HDCs listed in the config file. (All connected PCCs and all listed HDCs)
                             // Set concrete pccnum and hdcnum = 0 to spit on all HDCs listed in the config for this particular PCC
-   SIG_TTEST = 0x0000000C,   // Test signal
+   SIG_TTEST = 0x0000000C,   // Data Throughput Test signal
    SIG_VREG = 0x0000000D,   // FREG access for Vista
    SIG_FORCEPD = 0x0000000E,   // Force PD
    SIG_ENABLEPD = 0x0000000F,   // Enable/Disable internal and external PDs
@@ -68,13 +71,14 @@ typedef enum {
    SIG_START_FEEDBACK = 0x00000012,   // Start reading print data from FIFO path read buffers.  Feedback read data is written to a SimPrint file.
    SIG_UART = 0x00000013,   // Send 4 bytes to a printhead via its UART.  HT_KJ4 only.
    SIG_DEBUG_CONTROL = 0x00000014,   // Debug control signal.
-   SIG_UNUSED = 0x00000015,   // Reserved value
+   SIG_RUN_PCC_TEST = 0x00000015,   // Run a test on PCC hardware.
    SIG_STEPPER = 0x00000016,   // Start HDC-K GPIO stepper drive movement
    SIG_PDSKIP = 0x00000017,   // Ignore the next N product detects with N from 1 to 15
    SIG_LENGTH_ADJUST = 0x00000018,   // Set the LengthAdjust value to eat encoder pulses.  Call for master PCCs only.  
                                      // Equivalent to the configuration file parameter [Encoder] LengthAdjust = MODE, COUNT.
                                      // A length adjust value of 'N' lets 'N' encoder pulses through then discards the next pulse.
-   SIG_SET_TICKLE_FREQ = 0x00000019,   // Set the tickle frequency (Hz) for the PCC.  K1200, K600, K300, HDC-R and HDC-S only.
+   SIG_SET_TICKLE_FREQ = 0x00000019,   // Set the tickle and spit (see SIG_SPIT) frequency (Hz). By default it is 8000Hz.
+                                       // Absolute min/max values are:min: 82Hz, max: 100KHz. These are FPGA limits, concrete print head can have its own.
    SIG_FORCEWHITE = 0x0000001A,   // Force white print data for the head.  Available for most head types (contact support for an up to date list). 
                                   // Overrides the job's print data, and can be used while a print job is in progress.
                                   // For the HDC-2H2001, xaddr bits select which parts of the head the signal applies to
@@ -97,13 +101,15 @@ typedef enum {
    SIG_RESERVED4 = 0x00000023,   // Reserved for internal use
    SIG_RESERVED5 = 0x00000024,   // Reserved for internal use
    SIG_UPDATE_SORT_TIMING = 0x00000025,   // Trigger an immediate update of the sort registers; the values should be sent first using PiSetParam CCP_SORT_CONTROL
-   SIG_FIREOUT_DELAY = 0x00000026,   // Delay between the master fire-pulse and the fire out signal
+   SIG_FIREOUT_CONTROL = 0x00000026,   // FireOut control signal
    SIG_FORCE_HEAD_VOLTAGE = 0x00000027,   // head-specific. For SG600 head used to force HDC produce given voltage
    SIG_SKIP_DOC = 0x00000028,   // Skip document in memory based on it's 24-bit DocIdhead
    SIG_DLASE_CTRL = 0x00000029,   // head-specific. For DataLase head used to write magic control bits to the FPGA register
    SIG_PD_REPEAT = 0x0000002A,   // Specify the product detect repeat count: this is the *total* number of product detects that are generated from a single trigger
    SIG_CLEAR_PD_COUNT = 0x0000002B,   // Reset the product detect count for all PCCs to Zero.
-   SIG_INT_PD_COUNT_MAX = 0x0000002C,   // Set the maximum number of internal product detects to generate, counting from the point when SIG_CLEAR_PD_COUNT was last called.  
+   SIG_INT_PD_COUNT_MAX = 0x0000002C,   // **** Deprecated.  Will be removed in a future release.  ***
+                                        // *** The more flexible <see cref="F:Ttp.Meteor.SigExTypes.SIGEX_PRODUCT_DETECT_QUEUE" /> signal can be used to specify in advance how many internal PDs to generate. ***
+                                        // Set the maximum number of internal product detects to generate, counting from the point when SIG_CLEAR_PD_COUNT was last called.  
                                         // To avoid a race condition, SIG_CLEAR_PD_COUNT should be called before the internal PD is enabled with SIG_PDINTERVAL.
                                         // SIG_INT_PD_COUNT_MAX can be set before or after the internal product detect is enabled using SIG_PDINTERVAL.
                                         // If SIG_INT_PD_COUNT_MAX is set with a maximum count while the internal product detect is already running, it must be sufficiently 
@@ -111,7 +117,12 @@ typedef enum {
                                         // generated.  An error is logged if this happens.
                                         // Ethernet platforms only.
                                         // When the internal PD is halted a <see cref="F:Ttp.Meteor.DocEventFlags.DocEventPdStopReached" /> event is set in the TAppStatus.DocIds array
-   SIG_FIREOUT_WIDTH = 0x0000002D,   // Configure the fire out pulse width; equivalent to the configuration file entry [Test] FireOutPulseWidth
+   SIG_SET_HOME_OFFSET_PX = 0x0000002D,   // Set the homing offset in pixels for all PCCs.
+                                          // This is the value which will be set in the absolute X register when a home command is received, either via PiSetHome or via a 
+                                          // trigger on the Product Detect input.  The value persists over multiple home commands.
+                                          // *** It is important that the registers are fully written to the hardware before PiSetHome is called.  The application must set this
+                                          // signal using the synchronous PiSetAndValidateSignal function and wait for it to return before calling PiSetHome or triggering the
+                                          // PD input ***
    SIG_PCC_DATACAP_CONTROL = 0x0000002E,   // PCC data capture control
    SIGTYPE_COUNT = 0x0000002F,   // Count of valid SigTypes
 } SigTypes;
@@ -121,15 +132,15 @@ typedef enum {
    HT_NONE = 0x00000000,   // Default, indicates printer is not initialised
    HT_LEOPARD = 0x00000001,   // ** Deprecated ** Leopard/Xaar Omnidot318/TTEC CA3/CA4/CE2 etc.
    HT_SPECTRA = 0x00000002,   // Spectra Nova/Galaxy/S-Class
-   HT_HSS = 0x00000003,   // Xaar 1001/1002/1003 (HSS)
+   HT_HSS = 0x00000003,   // Legacy implementation for Xaar 1001/1002/1003/1006 (HSS) driven by HDC-HLM. Being deprecated. Use HT_Xaar100X instead for new designs
    HT_KJ4 = 0x00000004,   // Kyocera KJ4
    HT_XJ500 = 0x00000005,   // Xaar XJ 500 ** Deprecated **
    HT_QCLASS = 0x00000006,   // Dimatix Q-Class.  ** Deprecated: use HT_QS256. **
    HT_POLARIS = 0x00000007,   // Polaris.  ** Deprecated: use HT_PQ512. **
    HT_CF1 = 0x00000008,   // ** Deprecated ** TTEC CF1
-   HT_SPT_508GS = 0x00000009,   // Seiko 508 greyscale
+   HT_SPT_508GS = 0x00000009,   // ** Deprecated ** Seiko 508 greyscale
    HT_RG4 = 0x0000000A,   // Ricoh GEN4.  ** Deprecated: use HT_RicohGen4 or HT_RicohGen4L. **
-   HT_RG5 = 0x0000000B,   // Ricoh Ricoh Gen5/Gen5S/Gen6 heads on HDC-R5
+   HT_RG5 = 0x0000000B,   // Ricoh Gen5/Gen5S/Gen6 heads on HDC-R5
    HT_LEXMARK = 0x0000000C,   // ** Deprecated ** Lexmark (Yellowstone)
    HT_SPT_254GS = 0x0000000D,   // ** Deprecated ** Seiko 254 greyscale
    HT_SPT_510BIN = 0x0000000E,   // ** Deprecated ** Seiko 510 binary
@@ -146,7 +157,7 @@ typedef enum {
    HT_SPT_1024GS = 0x00000019,   // SII Printek 1024GS
    HT_4CF1 = 0x0000001A,   // TTEC CF1, 4 heads mount
    HT_SAMBA = 0x0000001B,   // Dimatix Fujifilm Samba head
-   HT_GH2220 = 0x0000001C,   // Ricoh GH2220
+   HT_GH2220 = 0x0000001C,   // ** Deprecated ** Ricoh GH2220
    HT_KM_M600 = 0x0000001D,   // Konica Minolta M600SH MEMS heads family
    HT_KM130 = 0x0000001E,   // Konica Minolta ME130H 1200DPI MEMS head
    HT_KM1800I = 0x0000001F,   // Konica Minolta KM1800i 2-head HDC
@@ -154,7 +165,7 @@ typedef enum {
    HT_K150 = 0x00000021,   // 150DPI Kyocera KJ4 (four colour head)
    HT_TTEC_CF3 = 0x00000022,   // TTEC CF3 head
    HT_TTEC_CK3 = 0x00000023,   // TTEC CK3 head
-   HT_GMA33 = 0x00000024,   // Dimatix GMA33 head
+   HT_GMA33 = 0x00000024,   // ** Deprecated ** Dimatix GMA33 head
    HT_Xaar2001 = 0x00000025,   // Xaar2001 2-head HDC
    HT_KY0360 = 0x00000026,   // Kyocera KJ4B-0360 head
    HT_Xaar1201 = 0x00000027,   // Xaar1201 head
@@ -187,7 +198,13 @@ typedef enum {
    HT_KY0600_EX = 0x00000042,   // Kyocera KJ4B-0600-20SP 2-head PDC
    HT_EPSON_I3200_HD = 0x00000043,   // Epson I3200-A1HD 2 colour 1200-YDPI head.
    HT_EPSON_D3000 = 0x00000044,   // Epson D3000 2 colour 1200-YDPI head.
-   HT_COUNT = 0x00000045,   // Count of HT_xxx values
+   HT_Xaar100X = 0x00000045,   // New implementation for Xaar 1001/1002/1003/1006 and their more advanced variants (Nitrox) driven by HDC-HLM
+   HT_Xaar200X = 0x00000046,   // HDC-H2001 driving one Xaar2001/2002 head
+   HT_4Seiko_508GS = 0x00000047,   // 4 Seiko 508GS heads driven by HDC-2Sii1536 and adapter board
+   HT_PJU_20 = 0x00000048,   // PJ unit with 20 "nozzles"
+   HT_Ricoh_TH6310F = 0x00000049,   // Ricoh TH6310F head.
+   HT_EPSON_T3200 = 0x0000004A,   // Epson T3200 head.
+   HT_COUNT = 0x0000004B,   // Count of HT_xxx values
 } eHEADTYPE;
 
 // Firmware state machine states
@@ -197,17 +214,17 @@ typedef enum {
    ST_OFF = 0x00000000,   // Head is powered off
    ST_NOCONN = 0x00000001,   // Head is not connected
    ST_NOTUSED = 0x00000002,   // Head is not used
-   ST_HDCPWR = 0x00000003,   // Head controller card is powered up
+   ST_HDCPWR = 0x00000003,   // Head Driver Card (HDC) is powered up
    ST_HDPWRWAIT = 0x00000004,   // Head power delay to reduce inrush current
    ST_HDPWR = 0x00000005,   // Head is powered up
    ST_CONFIG = 0x00000006,   // FPGA configuration is in progress
    ST_CFGDONE = 0x00000007,   // FPGA configuration is complete
-   ST_WSYNC = 0x00000008,   // HDC is configured, waiting to check that config was successful
+   ST_WSYNC = 0x00000008,   // Head Driver Card (HDC) is configured, waiting to check that config was successful
    ST_SETUP = 0x00000009,   // Head setup is in progress (e.g. waveform downloading)
    ST_READY = 0x0000000A,   // Head setup is complete
    ST_VCCON = 0x0000000B,   // Vcc power applied
    ST_VAAON = 0x0000000C,   // Vaa power applied
-   ST_RUNNING = 0x0000000D,   // Head is ready to print
+   ST_RUNNING = 0x0000000D,   // Head Driver Card (HDC) is fully running.  Use the BMHS_CFGEND and BMHS_VCCEN bits in TAppHeadStatus::bmStatusBits to check when the head is ready to print.
    ST_VAAOFF = 0x0000000E,   // Vaa power has been removed (Vcc power is still applied)
    ST_VCCOFF = 0x0000000F,   // Vcc power has been removed
    ST_DROPCOUNINIT = 0x00000010,   // Initialise dropcounter (RG5 only)
@@ -224,7 +241,6 @@ typedef enum {
 #define BMPS_DDFULL 0x00000020   // DDRAM is full
 #define BMPS_USBHIGHSPEED 0x00000040   // USB connected at high speed (USB hardware platforms only)
 #define BMPS_SPURIOUSPD 0x00000040   // A spurious product detect error is flagged if a PD is detected during the lockout period (Ethernet platforms only)
-#define BMPS_REG_DATA 0x00000080   // FPGA Register data valid
 #define BMPS_CLEARACK 0x00000100   // Acknowledge to Clear Memory command
 #define BMPS_ENC_ACTIVE 0x00000200   // Encoder is active
 #define BMPS_PD_ACTIVE 0x00000400   // Product-detect is active
@@ -242,7 +258,7 @@ typedef enum {
 #define SH_IO_IN_SIGNALS 0x00000014   // Right-Shift Value for aligning the field at the lsb of input IO Signals
 #define SH_FPGA_STATE 0x00000018   // Right-Shift Value for aligning the field at the lsb of FPGA State
 #define SH_PCC_STATE 0x0000001C   // Right-Shift Value for aligning the field at the lsb of PCC State
-#define BMPS2_DATA_XFER_ERROR 0x00000001   // USB transfer error detected. NOTE: Self clearing bit, so must check every time the status structure is read otherwise intermittent event could be missed.
+#define BMPS2_DATA_XFER_ERROR 0x00000001   // PCC data transfer error detected. NOTE: Self clearing bit, so must check every time the status structure is read otherwise intermittent event could be missed.
 #define BMPS2_PD_FAULT 0x00000002   // PD fault indicates printing has stopped due to too many missing PDs when using AutoPD.  Self-clearing.
 #define BMPS2_TICKLE_EN 0x00000004   // Auto-tickle mode enabled on the PCC
 #define BMPS2_DOC_NUM_ERR_HDC1 0x00000010   // Document number error flagged on hdc 1
@@ -256,25 +272,21 @@ typedef enum {
 #define BMPS2_HEAD_POWER_IN_PROGRESS 0x00001000   // Set if the PCC is in the process of powering HDCs or Heads on or off
 #define BMPS2_EEPROM_DATA_READY 0x00002000   // Set if the HDC/HEAD EEPROM data is available (currently applies to SG600 only)
 
-#define BMHS_CFGEND 0x80000000   // Bit31, HDC FPGA config end. Can be used to determine if the head is powered.
+#define BMHS_CFGEND 0x80000000   // Bit31, HDC FPGA config end. Can be used alongside BMHS_VCCEN to determine if the head is powered.
 #define BMHS_OVERCURRENT 0x40000000   // Bit30, HDC/Head overcurrent
 #define BMHS_BADPIXELVAL 0x20000000   // Bit29, indicates that the top bit of 4bpp pixel data is set
 #define BMHS_AMP_TEMP_ALARM 0x04000000   // Bit26, HDC amplifiers over temperature; head is powered off or waveform set to 0
 #define BMHS_HIGH 0x02000000   // Bit25, Always high
-#define BMHS_LOW 0x01000000   // Bit24, Always low
+#define BMHS_LOW 0x01000000   // Bit24, Always low (Meteor internal use only)
 #define BMHS_IO 0x00F00000   // Bits[23..20] HDC I/O signals
 #define BMHS_OVERTEMP 0x00800000   // Bit23, Head Driver IC overtemp (for KJ4 heads only)
 #define BMHS_VAAEN 0x00080000   // Bit19, Head VaaEnable readback
-#define BMHS_VCCEN 0x00040000   // Bit18,Head VccEnable readback. Can be used to determine if the head is powered.
+#define BMHS_VCCEN 0x00040000   // Bit18,Head VccEnable readback. Can be used alongside BMHS_CFGEND to determine if the head is powered.
 #define BMHS_CFDNO 0x00020000   // Bit17, Head CFDNO (Config Done) signal to indicate successful initialisation of the head (if applicable).
 #define BMHS_xxxxxxxx 0x00010000   // Bit16, Spare bit currently
 #define BMHS_ADC1 0x0000FF00   // Bits[15..8], ADC1 value
 #define BMHS_ADC0 0x000000FF   // Bits[7..0], ADC0 value
-#define BMHS_HEAD_REQUIRED 0x01000000   // Bit24, Head required by config file. Used only in AppHeadStatus.bmStatusBits
-
-#define BMJS_JOB_RUNNING 0x80000000   // Job running - not complete
-#define BMJS_CURRENT_DOC 0x7F000000   // Current document number
-#define BMJS_COPIESTOGO 0x00FFFFFF   // "Copies to Go" for the current document
+#define BMHS_HEAD_REQUIRED 0x01000000   // Bit24, Head/HDC required by config file.  Can be cleared by marking a HDC listed in the config file as "unused", using SIG_HDPOWER.
 
 // Print Controller state values.
 // 
@@ -300,28 +312,47 @@ typedef enum {
    Compression_Six_Grey_Levels = 0x00000002,   // Reduce 4 bits per pixel down to 6 grey levels.
 } TCompressionModes;
 
-#define MAX_HSS_ASICS 16   // Max HSS ASICs per head
+// SIG_FIREOUT_CONTROL operations codes
+typedef enum {
+   EFOCtrl_None = 0x00000000,   // Invalid value
+   EFOCtrl_SetPulse1_Delay = 0x00000001,   // Set FireOut Pulse1 delay in 12.5 ns units
+   EFOCtrl_SetPulse2_Delay = 0x00000002,   // Set FireOut Pulse2 delay in 12.5 ns units
+   EFOCtrl_SetPulse_Width = 0x00000003,   // Set FireOut Pulse width in 12.5 ns units
+   EFOCtrl_SetHDC = 0x00000004,   // Set HDC[1..8] for FireOut
+   EFOCtrl_SetDelayPulses = 0x00000005,   // Delay FireOuts for a specified number of fire pulses
+   EFOCtrl_SetNumberOfPulses = 0x00000006,   // Set number of FireOut pulses. 0 for unlimited
+   EFOCtrl_SetExpOff_Delay = 0x00000007,   // Set ExposureOFF delay in 12.5 ns units
+} TFireOutControl;
+
+// Id for the hardware tests that can be run on a PCC-E, see SIG_RUN_PCC_TEST
+typedef enum {
+   EPccHwTest_UdpEcho = 0x00000001,   // UDP Echo test
+   EPccHwTest_TcpIp_DataPerf = 0x00000002,   // TCP/IP data transfer performance test
+   EPccHwTest_PccE_FwUpd = 0x00000003,   // PCC-E FW update
+} TPccHwTestId;
+
 #define JT_FLAG_CONTINUE 0x80000000   // Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB" /> Job Type field to allow the application to disconnect, then reconnect to the same job.
                                       // If a job using JT_FLAG_CONTINUE is already running when the PCMD_STARTJOB command is received, the application is allowed to reconnect to the running job.
 #define JT_FLAG_RIGHTALIGN 0x40000000   // Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB" /> Job Type field to change the meaning of the 
                                         // <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_IMAGE" /> 'xleft' parameter for a single pass printer with media moving left-to-right
                                         // With this flag set, the parameter becomes 'xright', which defines the distance of the right-hand-side of the image from the 
                                         // right-hand-side of the document
-#define JT_FLAG_ROTATEENABLE 0x20000000   // Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB" /> Job Type field to enable image rotation for the job
+#define JT_FLAG_ROTATEENABLE 0x20000000   // Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB" /> Job Type field to enable image rotation for the job.
+#define JT_FLAG_FASTMASKENABLE 0x10000000   // Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB" /> Job Type field to enable fast masking for the job
 #define PCMD_BLOCK_FLAG 0x80000000   // If the top bit of a command is set, PiSendCommand blocks until the PrintEngine has fully processed the command
                                      // This can be useful in a few situations: e.g. when starting a print job, so the application knows when the command has completed 
                                      // and can check whether it succeeded.  Normally, a PrintEngine return value isn't available, as the commands are buffered for 
                                      // performance reasons
                                      // *** USE WITH CARE *** Blocking commands can significantly degrade performance ***
 #define APP_STATUS_VERSION 8   // Version of the <see cref="T:Ttp.Meteor.TAppStatus">TAppStatus</see> structure
-#define APP_PCC_STATUS_VERSION 4   // Version of the <see cref="T:Ttp.Meteor.TAppPccStatus">TAppPccStatus</see> structure
+#define APP_PCC_STATUS_VERSION 4   // OBSOLETE: This was previously used for the <see cref="F:Ttp.Meteor.TAppPccStatus.StructVersion" /> field.  TAppPccStatus.StructVersion now reports the TAppPccStatus structure size in bytes.
 #define APP_HEAD_STATUS_VERSION 10   // Version of the <see cref="T:Ttp.Meteor.TAppHeadStatus">TAppHeadStatus</see> structure
 #define CFWRITE_PROGRESS_MASK 0x000000FF   // 0 - 100%
 #define CFWRITE_IN_PROGRESS 0x00000100   // Set during a compact flash write operation
 #define CFPRESENT 0x80000000   // Compact flash card (PCC8) or UHS SD card (PCCE) is present
 #define CFFAULT 0x40000000   // Compact flash fault
-#define DATAPATH_OVERRIDE 0x40000000   // Bit set as part of the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> command to override the dual FIFO datapath for the image
-#define DATAPATH_SELECT 0x20000000   // Select which dual FIFO datapath to use for <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> if <see cref="F:Ttp.Meteor.MeteorConsts.DATAPATH_OVERRIDE" /> is also set
+#define DATAPATH_OVERRIDE 0x40000000   // Obsolete: USB hardware only.  [ Bit set as part of the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> command to override the dual FIFO datapath for the image. ]
+#define DATAPATH_SELECT 0x20000000   // Obsolete: USB hardware only.  [ Select which dual FIFO datapath to use for <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> if <see cref="F:Ttp.Meteor.MeteorConsts.DATAPATH_OVERRIDE" /> is also set. ]
 #define CF_HDIMAGE_FIRST_CMD 0x10000000   // When an image is split into multiple <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> commands, this bit should be set for the first command
 #define CF_HDIMAGE_NOT_LAST_CMD 0x80000000   // When an image is split into multiple <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK" /> commands, this bit should be set for all commands except the final one
 #define DROPTUNER_STATUS_VERSION 5   // Version of the <see cref="T:Ttp.Meteor.TDropTunerStatus">TDropTunerStatus</see> structure
@@ -330,7 +361,9 @@ typedef enum {
 #define MAX_HEADS_PER_HDC 4   // Maximum number print heads on any HDC
 #define MAX_JAS_PER_HEAD 16   // Max jetting assemblies supported by any head. Mostly for sanity checks, because JA is a pretty abstract thing
 #define MAX_NOZZLE_ROWS_PER_HDC 8   // Maximum number of printhead nozzle rows which can be driven by a standard (LVDS connected) HDC
-#define MAX_PLANES 32   // Max number of colour planes
+#define MAX_PLANES 32   // Max number of colour planes which support full PrintEngine / ScanEngine functionality.
+                        // For some applications it is possible to use extended plane indexes greater than 32 in the configuration file.
+                        // Some PrintEngine functionality is unavailable on Planes which have extended indexes.
 #define MAX_Y_INTERLACE 12   // Max Y interlace levels
 #define MAX_X_INTERLACE 8   // Max X interlace levels
 #define MAX_HEADS_PER_PLANE 64   // Max heads per colour plane
@@ -343,21 +376,23 @@ typedef enum {
 #define MAX_SUBSYS 5   // The maximum number of sub-systems which can be driven by one PC running the PrintEngine.
                        // Each sub-system can drive a different head type, or can use the same head type configured differently (e.g. printing at
                        // a different X resolution).  Subsystems must be split at PCC boundaries.
+#define MAX_WATERMARKS 16   // The maximum number of watermarks allowed in a single image.
 #define CPS_PRINTING 1   // Bit set in TContinuousPrintStatus.StateFlags when printing is active
 #define CPS_STARTED 2   // TContinuousPrintStatus.StateFlags flag set once printing starts;  Cleared by CCP_MONITOR_CONTINUOUS_PRINT
 #define CPS_NO_MONITORED_HEADS 4   // TContinuousPrintStatus.StateFlags error bit if no continuous print monitor heads are selected
 #define MAX_LICENCE_KEYS 10   // Maximum number of licence keys definable
 #define SORT_USE_MASK 5   // Special value to use in PCMD_SORT to select a combination of outputs specified by [ControllerN] SortMask
-#define BM_CFG_RELOAD_XOFFSETS 1   // Set this bit in PiReloadConfigValues to reload the X offsets from the config file
-#define BM_CFG_RELOAD_YOFFSETS 2   // Set this bit in PiReloadConfigValues to reload the Y offsets from the config file
-#define BM_CFG_RELOAD_WFMS 4   // Set this bit in PiReloadConfigValues to reload the waveform filenames from the config file
-#define BM_CFG_RELOAD_DISABLED_NOZZLES 8   // Set this bit in PiReloadConfigValues to reload the [Planes] DisabledNozzlesPlaneN entries from the config file
-#define BM_CFG_RELOAD_IMAGE_STORE_PARAMS 16   // Set this bit in PiReloadConfigValues to reload the image store related parameter from the config file
+#define BM_CFG_RELOAD_XOFFSETS 1   // Set this bit (BIT0) in PiReloadConfigValues to reload the X offsets from the config file
+#define BM_CFG_RELOAD_YOFFSETS 2   // Set this bit (BIT1) in PiReloadConfigValues to reload the Y offsets from the config file
+#define BM_CFG_RELOAD_WFMS 4   // Set this bit (BIT2) in PiReloadConfigValues to reload the waveform filenames from the config file
+#define BM_CFG_RELOAD_DISABLED_NOZZLES 8   // Set this bit (BIT3) in PiReloadConfigValues to reload the [Planes] DisabledNozzlesPlaneN entries from the config file
+#define BM_CFG_RELOAD_IMAGE_STORE_PARAMS 16   // Set this bit (BIT4) in PiReloadConfigValues to reload the image store related parameter from the config file
                                               // Should only be used for changes in [PCC8Flash] ReadMaskPdSyncOffset and ReadMaskImageLength; other changes require a re-init
-#define BM_CFG_RELOAD_ADJUST_COLOUR_BALANCE 32   // Set this bit in PiReloadConfigValues to reload the [Planes] AdjustColourBalancePlaneN entries from the config file
-#define BM_CFG_RELOAD_SCREEN_MODES 64   // Set this bit in PiReloadConfigValues to reload the [ScreenModeN] sections from the config file
-#define BM_CFG_RELOAD_NOZZLE_COMPENSATION 128   // Set this bit in PiReloadConfigValues to reload the [NozzleCompensation] and [InterplanePlaneN] sections from the config file
-#define BM_CFG_RELOAD_WATERMARK 256   // Set this bit in PiReloadConfigValues to reload the [Watermark] section from the config file
+#define BM_CFG_RELOAD_ADJUST_COLOUR_BALANCE 32   // Set this bit (BIT5) in PiReloadConfigValues to reload the [Planes] AdjustColourBalancePlaneN entries from the config file
+#define BM_CFG_RELOAD_SCREEN_MODES 64   // Set this bit (BIT6) in PiReloadConfigValues to reload the [ScreenModeN] sections from the config file
+#define BM_CFG_RELOAD_NOZZLE_COMPENSATION 128   // Set this bit (BIT7) in PiReloadConfigValues to reload the [NozzleCompensation] and [InterplanePlaneN] sections from the config file
+#define BM_CFG_RELOAD_WATERMARK 256   // Set this bit (BIT8) in PiReloadConfigValues to reload the [Watermark] section from the config file
+#define BM_CFG_RELOAD_TEMPERATURE_CONTRACTION 512   // Set this bit (BIT9) in PiReloadConfigValues to reload the [TemperatureContraction] section from the config file
 #define MAX_MULTICHANNEL_FILE_BUFFERS 32   // Maximum number of image buffers that can be loaded from a multichannel image file
 #define IMG_BUF_UNSET 0xFFFFFFFF   // Returned by PiAllocateImageBufferEx if image buffer allocation fails
 #define DATAPATH_FEATURE_FIFO 1   // FIFO datapath available: see <see cref="F:Ttp.Meteor.TAppStatus.bmDatapathsAvailable" />
@@ -416,14 +451,6 @@ typedef enum {
 #define HDWS_GENERIC_ERR 0x00000006   // Some generic error
 #define HDWS_ERR_MASK 0x000000FF   // Error code mask. Error code occupies lowest byte, so error codes must be in a range [0..255]
 #define HDWS_FLG_TICKLE_WF 0x00000100   // bit flag, specifies that error code applies to the ticking waveform
-
-// V2 Status request structure.
-typedef enum {
-   SS_NOT_REQUESTED = 0x00000000,   // Data has not been requested
-   SS_WAITING = 0x00000001,   // Data has not yet arrived
-   SS_READY = 0x00000002,   // Data ready to be collected from the port
-   SS_FAULT = 0x00000003,   // Serious fault, disconnect requested
-} eSTATUS;
 
 // Mask mode parameter supplied with PCMD_CFIMAGE (in ms 4 bits of xstart)
 // and in PCMD_CFHDIMAGE (in ms 4 bits of xleft) commands
@@ -508,7 +535,7 @@ typedef enum {
                                  // Cmd[1] = 4 (DWORD count); optionally 3 + N where N is the number of subsystems, if independent document widths are required
                                  // Cmd[2] = Job ID
                                  // Cmd[3] = Job Type <see cref="T:Ttp.Meteor.eJOBTYPE">eJOBTYPE</see>, ORed with optional job type flags <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_CONTINUE" />,
-                                 // <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_RIGHTALIGN" />, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_ROTATEENABLE" />
+                                 // <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_RIGHTALIGN" />, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_ROTATEENABLE" />, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_FASTMASKENABLE" />
                                  // Cmd[4] = Resolution <see cref="T:Ttp.Meteor.eRES">eRES</see>
                                  // Cmd[5] = Document width (ignored for scanning or continuous print unless BM_PDLOCKOUT enabled)
                                  // Cmd[6] = Optional; document width for subsystem 2 in a mixed head type or mixed resolution configuration
@@ -529,7 +556,7 @@ typedef enum {
    PCMD_IMAGE = 0x7A5535A4,   // SendImage command id
                               // Cmd[0] = PCMD_IMAGE
                               // Cmd[1] = Command DWORD count (4 + image DWORDs)
-                              // Cmd[2] = [Bits7:0] Plane (1-<see cref="F:Ttp.Meteor.MeteorConsts.MAX_PLANES">MAX_PLANES</see>); other bits reserved (must be zero)
+                              // Cmd[2] = [Bits7:0] Plane (1-128); other bits reserved (must be zero)
                               // Cmd[3] = XLeft (pixels) or XStart (pixels) for scanning or continuous print; XRight (pixels) if JT_FLAG_RIGHTALIGN is set
                               // Cmd[4] = YTop (pixels)
                               // Cmd[5] = Width (pixels)
@@ -775,7 +802,7 @@ typedef enum {
                                  // Cmd[10] = First page to RIP (0 for all pages)
                                  // Cmd[11] = Last page to RIP (0 for all pages)
                                  // Cmd[12] = Control flags: 
-                                 // [BITS1:0] rotate in multiples of 90 degrees: 0 = 0; 1 = -90; 2 = 180; 3 = -90; 
+                                 // [BITS1:0] rotate in multiples of 90 degrees: 0 = 0; 1 = -90; 2 = 180; 3 = 90; 
                                  // [BIT2] set = mirror along the X axis
                                  // [BIT3] set = TAppStatus.TracerCount increments once each page is loaded to the hardware (Ethernet only)
                                  // [BIT4] clear = FIFO; set = PRELOAD
@@ -786,6 +813,7 @@ typedef enum {
                                  // Cmd[16] = Reserved for future use.  Must be zero.
                                  // Cmd[17-34] = Reserved for future use.  Must be zero.
    PCMD_ROTATE = 0x7A5535C6,   // Rotate an image in range of [-45, +45] degrees immediately before translating.
+                               // It can also be used to scale the image in x and y before rotating (or set angle to 0 to scale without rotation).
                                // See the Image Rotation Application Note for more examples and explanation.
                                // Images with a large aspect ratio cannot be rotated as far, a 4:1 image can only be rotated by ~[-14,+14]. Limitation for this is
                                // tan(|angle|) &lt; height/width.
@@ -793,12 +821,14 @@ typedef enum {
                                // Therefore it is highly recommended that you enable fast translation and parallel translation.
                                // This command must be sent before each image command sent, if it is not and image rotation is enabled then the print will abort.
                                // Cmd[0] = PCMD_ROTATE
-                               // Cmd[1] = 5 (command DWORD count)
+                               // Cmd[1] = 7 (command DWORD count)
                                // Cmd[2] = Signed 32-bit integer describing rotation angle in 10^-7 degree steps, i.e. rotation angle = Cmd[2]/10^7.
                                // Cmd[3] = Optional additional adjustment in x (pixels) where the coordinate system has been rotated with the image.
                                // Cmd[4] = Optional additional adjustment in y (pixels) where the coordinate system has been rotated with the image.
                                // Cmd[5] = Tile width, required if the image is a different size to the tile activating the product detect. 0 => use image width.
                                // Cmd[6] = Tile height, required if the image is a different size to the tile activating the product detect. 0 => use image height.
+                               // Cmd[7] = Optional signed 32-bit integer to scale the width of the image up or down, new width (px) = image width + this value.
+                               // Cmd[8] = Optional signed 32-bit integer to scale the height of the image up or down, new height (px) = image height + this value.
    PCMD_NOZZLECOMP = 0x7A5535C7,   // Configure same plane nozzle compensation for a single plane. For more information about these values, see documentation.
                                    // Cmd[0] = PCMD_NOZZLECOMP
                                    // Cmd[1] = 14 (command DWORD count)
@@ -841,6 +871,30 @@ typedef enum {
    PCMD_END_CMD_LOOP = 0x7A5535CB,   // Terminate a command loop started by PCMD_START_CMD_LOOP
                                      // Cmd[0] = PCMD_END_CMD_LOOP
                                      // Cmd[1] = 0 (command DWORD count)
+   PCMD_SET_COPIES_PER_PCC = 0x7A5535CC,   // Set the number of copies of each document to print on a (master) PCC basis.  This is used for bottle printing, where some
+                                           // stations may print multiple copies of the image (e.g. for undercoat or overcoat).  It also allows printing on some PCCs to be completely 
+                                           // omitted from the job.  Send with zero command DWORDs to turn off per-PCC image copy mode.
+                                           // Note that the document ID (if used) is generated when the notify head receives the product detect for the *first* copy of the document.
+                                           // Subsequent copies do not generate document IDs.  The PrintCount increments when all copies of the document have started to print on all PCCs.
+                                           // Cmd[0] = PCMD_COPIES_PER_PCC
+                                           // Cmd[1] = Pcc Count (command DWORD count: 1 DWORD per PCC).  Zero resets any previously set per-PCC copy parameters.
+                                           // Cmd[2 .. N] Number of image copies per (master) PCC.
+   PCMD_FASTMASK = 0x7A5535CD,   // Mask an image using a given set of 4 coordinates immediately before translating.
+                                 // Any image data outside of the quadrilateral will be set to white. This can be used to avoid printing ink off the edge of the media.
+                                 // The 4 coordinates must form a convex quadrilateral.
+                                 // Sufficient time must be given to the PrintEngine to mask and translate the image before media reaches the print heads.
+                                 // Therefore it is highly recommended that you enable fast translation and parallel translation.
+                                 // This command must be sent before each image command sent, if it is not and fast masking is enabled then the print will abort.
+                                 // Cmd[0] = PCMD_FASTMASK
+                                 // Cmd[1] = 8 (command DWORD count)
+                                 // Cmd[2] = Top left coordinate X position (in px).
+                                 // Cmd[3] = Top left coordinate Y position (in px).
+                                 // Cmd[4] = Bottom left coordinate X position (in px).
+                                 // Cmd[5] = Bottom left coordinate Y position (in px).
+                                 // Cmd[6] = Bottom right coordinate X position (in px).
+                                 // Cmd[7] = Bottom right coordinate Y position (in px).
+                                 // Cmd[8] = Top right coordinate X position (in px).
+                                 // Cmd[9] = Top right coordinate Y position (in px).
 } CtrlCmdIds;
 
 // Config parameter identifiers.
@@ -858,12 +912,12 @@ typedef enum {
    CCP_HEAD_YADJUST = 0x00000004,   // Head Y-adjustment (pixels)
    CCP_HEAD_VOLTAGE = 0x00000005,   // Head reference voltage (Vr in 100mV steps) for voltage / temperature adjustment; zero to use default value from config file
                                     // If pcc and head are both set to zero then anum is ignored and value is applied to every head and/or nozzle row
-   CCP_HEAD_TEMP_L = 0x00000006,   // Head reference temp (Tr)
-   CCP_HEAD_GRAD = 0x00000007,   // Head temp adjust gradient (G)
+   CCP_HEAD_TEMP_L__Obsolete = 0x00000006,   // Obsolete.  Use <see cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_RefTemp" /> for head types which support voltage / temperature adjustment.
+   CCP_HEAD_GRAD__Obsolete = 0x00000007,   // Obsolete.  Use <see cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_Gradient" /> for head types which support voltage / temperature adjustment.
    CCP_HEAD_WFILE = 0x00000008,   // Deprecated.  Use CCP_HEAD_WFILE_EX.
    CCP_HEAD_XSEPARATION = 0x00000009,   // X-separation offset (1/100th print clock - signed).  Offset is applied to "Xseparation" config file setting.
    CCP_HEAD_YSEPARATION = 0x0000000A,   // Y-adjust for JA1 (pixels - signed).  Offset is applied to "Yseparation" config file setting.
-   CCP_HEAD_TEMP = 0x0000000B,   // Target head temperature (0.1C).  Set to zero to use default config file value.
+   CCP_HEAD_TEMP = 0x0000000B,   // ** Legacy parameter: use CPEX_TargetTemp ** [Deprecated target head temperature (0.1C).  Set to zero to use default config file value.]
    CCP_HEAD_JA1_VOLTAGE1 = 0x0000000C,   // Fire-pulse voltage offset for 1st half of Jetting Assembly 1 (0.1 volt).  Offset is applied to "HeadVoltage" config file setting.
    CCP_HEAD_JA1_VOLTAGE2 = 0x0000000D,   // Fire-pulse voltage offset for 2nd half of JA1 (0.1 volt).  Offset is applied to "HeadVoltage" config file setting.
    CCP_HEAD_JA1_PULSEWIDTH = 0x0000000E,   // Fire-pulse width offset for JA1 (nanoseconds).  Offset is applied to "PulseWidth" config file setting.
@@ -889,22 +943,23 @@ typedef enum {
    CCP_ENCODER_RESOLUTION = 0x00000022,   // Set the encoder multiplier (ms 16 bits) and divider (ls 16 bits)
    CCP_KHEAD_VOLTAGE = 0x00000023,   // Head voltage adjust setting. The range is +/-4V from factory setting in 0.1V increments. The setting value is multiplied by 10 so for 1.0V enter 0xA (-10 would be 0xF6)
    CCP_KHEAD_PIXELMODE = 0x00000024,   // KJ4 palette mapping (0 - 7), see user manual for details
-   CCP_AUX_TEMP = 0x00000025,   // Auxiliary temperature set point (0.1C)
+   CCP_AUX_TEMP = 0x00000025,   // ** Legacy parameter: use CPEX_AuxTargetTemp. ** [Deprecated auxiliary temperature set point (0.1C)]
    CCP_BITS_PER_PIXEL = 0x00000026,   // Overrides default bits per pixel for current head type, if the value is supported.  
                                       // <see cref="F:Ttp.Meteor.TAppStatus.SupportedBppBitmask" /> reports the bit depths supported by the current head type.
    CCP_BIDI_HEAD_XSEPARATION_ADJUST = 0x00000027,   // Allows bi-directional setting of the JA1/JA2 X offset for scanning mode.  Units are 1/100 pixel, rounded to 1/16 pixel for printing.
    CCP_HEAD_WFILE_JA2 = 0x00000028,   // Deprecated.  Use CCP_HEAD_WFILE_EX.
    CCP_SCLK = 0x00000029,   // SCLK for HSS head (period in ns (85 - 1000), or 0 to use default)
    CCP_HEAD_ORIENTATIONS = 0x0000002A,   // Set the head orientations for the next job.  Either globally or for an individual HDC.
-   CCP_FIRE_OUT = 0x0000002B,   // Specify a GPIO output to strobe when the printhead fires: used to generate a signal synchronously with printhead firing.  1-4 sets the matching I/O to strobe, 0 disables the fire out.
-   CCP_STATUS_UPDATE_MS = 0x0000002C,   // Set the PCC status update interval.  Default is 150ms.  Use with care as a shorter interval can reduce available print data bandwdith.
+   CCP_FIRE_OUT = 0x0000002B,   // value Byte0 specifies GP output to strobe when the printhead fires: used to generate a signal synchronously with printhead firing. 1-4 sets GPO number, 0 disables the fire out.
+                                // value Byte1 specifies GP output to strobe Exposure control:  1-4 sets GPO number, 0 Exposure control.
+   CCP_STATUS_UPDATE_MS = 0x0000002C,   // Set the sleep interval which the PC uses when polling for PCC status.  The default, and maximum, is 10ms.  Larger values are ignored.
    CCP_SET_CONTINUOUS_PRINT = 0x0000002D,   // Enable/disable FIFO continuous print mode
    CCP_MONITOR_CONTINUOUS_PRINT = 0x0000002E,   // Enable/disable head monitoring for FIFO continuous printing
    CCP_KHEAD_CLK2 = 0x0000002F,   // Set KJ4 CLK2 frequency, in units of 0.1MHz, from 5MHz to 40MHz
-   CCP_YSCALE = 0x00000030,   // Set Y-scale multiplier, 1, 2, 4 or 8 (Lexmark head)
-   CCP_XSCALE = 0x00000031,   // Set X-scale multiplier, 1, 2, 4 or 8 (Lexmark head)
-   CCP_HEAD_TEMP2 = 0x00000032,   // Target JA2 head temperature (0.1C).  0 (default) means use HEAD_TEMP value.
-   CCP_AUX_TEMP2 = 0x00000033,   // Auxiliary2 temperature set point.  0 (default) means use AUX_TEMP
+   CCP_YSCALE__Obsolete = 0x00000030,   // Obsolete (was CCP_YSCALE)
+   CCP_XSCALE__Obsolete = 0x00000031,   // Obsolete (was CCP_XSCALE)
+   CCP_HEAD_TEMP2__Obsolete = 0x00000032,   // Obsolete (was CCP_HEAD_TEMP2)
+   CCP_AUX_TEMP2__Obsolete = 0x00000033,   // Obsolete (was CCP_AUX_TEMP2)
    CCP_REVERSE_DIR = 0x00000034,   // Reverse transport direction in non-scanning mode
    CCP_SG1024_V_ADJ = 0x00000035,   // Deprecated.  Use CCP_V_ADJUST_EX.
    CCP_HEAD_WFILE_EX = 0x00000036,   // Index into list of waveform filenames (1 - <see cref="F:Ttp.Meteor.MeteorConsts.MAX_WAVEFORM_FNAMES">MAX_WAVEFORM_FNAMES</see>)
@@ -916,15 +971,15 @@ typedef enum {
    CCP_V_ADJUST_EX = 0x0000003C,   // HT_RG5: Vp in 0.1v steps; 0 to use waveform's original voltage.
                                    // HT_STARFIRE: anum = 1 - 8 to set waveform voltage scaling for SG1024 nozzle row.  Combined with "HeadVoltageAdjustment" config file setting if present. 1000 => 100% of the original voltage, 1200 => 120% of the original voltage, 800 => 80% of the original voltage
    CCP_NOZZLE_ROW_X_ADJUST = 0x0000003D,   // Signed offset in microns from the nominal row or colour separation.  Rounded to 1/16 pixel after DPI scaling.
-   CCP_WFM_VSCALE_MODE = 0x0000003E,   // Zero: Slew time kept constant when voltage scaled.  Non-zero: Slew rate kept constant when voltage scaled.
+   CCP_WFM_VSCALE_MODE__Obsolete = 0x0000003E,   // Zero: Slew time kept constant when voltage scaled.  Non-zero: Slew rate kept constant when voltage scaled.
    CCP_SCANNING = 0x0000003F,   // ** Do not use in production, this is for internal Meteor unit testing to switch between scanning mode (non-zero) and single pass mode (zero). **
-   CCP_PRINT_DETECT_ENABLE = 0x00000040,   // Enable (1) or disable (0) print data detection for every document.  Datamix mode only.  Only used for USB PCCs.
+   CCP_PRINT_DETECT_ENABLE__Obsolete = 0x00000040,   // Obsolete (previously available on PCC8 + HT_SPECTRA only).
    CCP_KHEAD_DSEL = 0x00000041,   // values from 0 - 3, see user manual for details
    CCP_SINGLE_NOZZLE_ROW_X_ADJUST = 0x00000042,   // Signed offset in 1/100th print clocks from the nominal row position, rounded to 1/16 pixel for printing.
    CCP_BIDI_SINGLE_NOZZLE_ROW_X_ADJUST = 0x00000043,   // Signed offset in 1/100th print clocks from the nominal row position for bi-directional reverse-pass in scanning mode, rounded to 1/16 pixel for printing.
-   CCP_KHEAD_TEMP_LIMITS = 0x00000044,   // Obsolete.  Use CPEX_TemperatureUpperLimit and CPEX_TemperatureLowerLimit.
-   CCP_K300_ABS_VOLTAGE = 0x00000045,   // Obsolete.  Use CPEX_HeadVoltageAbs.
-   CCP_K600_ABS_VOLTAGE = 0x00000046,   // Obsolete.  Use CPEX_HeadVoltageAbs.
+   CCP_KHEAD_TEMP_LIMITS__Obsolete = 0x00000044,   // Obsolete.  Use CPEX_TemperatureUpperLimit and CPEX_TemperatureLowerLimit.
+   CCP_K300_ABS_VOLTAGE__Obsolete = 0x00000045,   // Obsolete.  Use CPEX_HeadVoltageAbs.
+   CCP_K600_ABS_VOLTAGE__Obsolete = 0x00000046,   // Obsolete.  Use CPEX_HeadVoltageAbs.
    CCP_HEAD_FIRST_ACTIVE_NOZZLE = 0x00000047,   // Offset to first active nozzle on the head.  Zero-based; i.e. offset = 0 means start at the first nozzle on the head.
    CCP_MINIMUMGAP = 0x00000048,   // Minimum gap between documents when the product detect lockout is enabled
    CCP_RESERVED1 = 0x00000049,   // Reserved for future use
@@ -954,6 +1009,7 @@ typedef enum {
                                                     // 0: Normal translator nozzle row processing.
    CCP_RAISED_EDGE_COMPENSATION = 0x00000060,   // Distance in microns
    CCP_STITCH_WIDTH = 0x00000061,   // Stitch width in pixels
+   CCP_REDUCE_PRINT_DATA = 0x00000062,   // Ratio of print-lines to keep * 1e7. Input / 1e7 should be in range (0,1]. Set to 0 to disable.
    CCP_INTERNAL_0 = 0x000000F0,   // Meteor internal use.
    CCP_INTERNAL_1 = 0x000000F1,   // Meteor internal use.
    CCP_INTERNAL_2 = 0x000000F2,   // Meteor internal use.
@@ -978,7 +1034,8 @@ typedef enum {
 // can be adjusted by the application via PiSetParamEx
 typedef enum {
    CPEX_None = 0x00000000,   // Dummy value, not a real parameter
-   CPEX_X_Offset = 0x00000110,   // Nozzle Rows X offsets (centi-pixels)
+   CPEX_X_Offset = 0x00000110,   // Absolute Nozzle Rows X offsets (in centi-pixels, 1/100 of a pixel units). Has the same meaning as "Xoffsets" parameter in Meteor config file. Use this parameter to "set" head positions.
+                                 // If you want to _adjust_ head/nozzle row position relatively to the "already set" ones, use CPEX_Head_XAdjust_cpix parameter
    CPEX_Y_Offset = 0x00000111,   // Head Y offset from the configuration file. Values in pixels.
    CPEX_Y_Adjust = 0x00000112,   // Head Y adjustment
    CPEX_HeadVoltage = 0x00000113,   // Head Voltage, 1mv resolution
@@ -988,8 +1045,7 @@ typedef enum {
    CPEX_RefTemp = 0x00000115,   // Reference Temperature
                                 // Head Types: HT_4CF1, HT_SPT_1024GS, HT_SPT_RC1536
    CPEX_TargetTemp = 0x00000116,   // Target temperature
-                                   // Head Types: HT_KM130, HT_KM_M600, HT_KM1024I, HT_KM1800I, HT_KM1800I_SH, HT_KM1024, HT_KM1024A, HT_SPT_1024GS, HT_SPT_RC1536, HT_SEIKO_SRC1800, 
-                                   // HT_SG600, HT_KY1200RM, HT_QS256, HT_PQ512, HT_RicohGen4, HT_RicohGen4L, HT_RG5
+                                   // Head Types: All currently supported head types.
    CPEX_TemperatureUpperLimit = 0x00000117,   // Head temperature upper limit for the Kyocera print heads with in-built temperature control
                                               // Printhead driver temperature threshold for the KY0360; the head is shut down if it exceeds the limit
                                               // Head Types: HT_K150, HT_K300, HT_K600, HT_K1200, HT_KY0360
@@ -1018,11 +1074,14 @@ typedef enum {
                                       // One means keep hold time constant (HT_KM_M600, HT_Xaar1201) or keep pulse width constant (Dimatix heads, HT_EPSON_S3200)
                                       // Two means keep slew rate constant
                                       // Zero is the default value for HT_KM_M600; One is the default value for HT_SG600; Two is the default value for HT_SAMBA, HT_GMA33, HT_GMA99, HT_Xaar1201
-   CPEX_WF_VScaleCoeff = 0x00000122,   // Waveform voltage scale coefficient Range:[0.5 to  1.5]
+   CPEX_WF_VScaleCoeff = 0x00000122,   // Waveform voltage scale coefficient Range:[0.5 to 1.5]
                                        // Head Types: HT_SAMBA, HT_GMA33, HT_GMA99, HT_SG600, HT_KM130, HT_KM_M600, HT_KM1024I (scales VH2 only), HT_KM1800I (scales VH2 only), 
                                        // HT_KM1800I_SH (scales VH2 only), HT_KM1024 (scales VH2 only), HT_KM1024A (scales COM2 only), HT_Xaar1201, HT_RicohGen4, HT_RicohGen4L, 
                                        // HT_GH2220, HT_RicohGen5, , HT_STARFIRE, HT_PQ512, HT_QS256, HT_EPSON_S3200
    CPEX_HeadVoltageAdj = 0x00000123,   // Head voltage adjust, 1mv resolution
+                                       // Head Types: HT_K1200 (1 adjustment per head), HT_K600 (1 adjustment per head), HT_K300 (2 adjustments per head), 
+                                       // HT_K150 (2 adjustments per head), HT_Xaar2001 (4 adjustments per head, 1 per nozzle row),
+                                       // HT_Xaar100X (2 adjustments per head, 1 per nozzle row)
    CPEX_DrivingStopFunction = 0x00000124,   // Driving Stop function control; this "terminates operation of printhead when driver IC reaches a specified temperature"
                                             // Head Types: HT_K150, HT_K300
    CPEX_WF_VH2_voltage = 0x00000125,   // WF VH2 driving voltage. KM1800I, KM1024I and KM1024 specific
@@ -1033,7 +1092,7 @@ typedef enum {
                                          // Head Types: HT_KM1024I, HT_KM1800I
    CPEX_WF_VH1_C_voltage = 0x00000128,   // >WF VH1 row C off-drive voltage. KM1800I specific
                                          // Head Types: HT_KM1800I
-   CPEX_Head_XAdjust_cpix = 0x00000129,   // User head X position adjustment in 1/100 of a pixel
+   CPEX_Head_XAdjust_cpix = 0x00000129,   // User Nozzle row X position adjustment in 1/100 of a pixel
    CPEX_HeadOprMode = 0x0000012A,   // HDC/Head OPR mode, KM1800I and KM1024I specific
    CPEX_StitchMaskBottom = 0x0000012B,   // Index of the stitch mask file to use for the bottom of the head, where it is the upper head in a stitch band
    CPEX_StitchMaskTop = 0x0000012C,   // Index of the stitch mask file to use for the top of the head, where it is the lower head in a stitch band
@@ -1043,14 +1102,14 @@ typedef enum {
                                    // Head Types: HT_RG5
    CPEX_JA_XSep_um = 0x00000130,   // Jetting assemblies X-separation, microns. Applicable to Ricoh RG5 heads only.  This is the distance between row 1 and 3 (and between row 2 and 4).
                                    // Head Types: HT_RG5
-   CPEX_VoltageTrim0 = 0x00000131,   // Voltage Trim0, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim1 = 0x00000132,   // Voltage Trim1, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim2 = 0x00000133,   // Voltage Trim2, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim3 = 0x00000134,   // Voltage Trim3, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim4 = 0x00000135,   // Voltage Trim4, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim5 = 0x00000136,   // Voltage Trim5, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim6 = 0x00000137,   // Voltage Trim6, used to adjust individual ASIC voltages on Xaar 2001 head
-   CPEX_VoltageTrim7 = 0x00000138,   // Voltage Trim7, used to adjust individual ASIC voltages on Xaar 2001 head
+   CPEX_VoltageTrim0 = 0x00000131,   // Voltage Trim0, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim1 = 0x00000132,   // Voltage Trim1, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim2 = 0x00000133,   // Voltage Trim2, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim3 = 0x00000134,   // Voltage Trim3, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim4 = 0x00000135,   // Voltage Trim4, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim5 = 0x00000136,   // Voltage Trim5, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim6 = 0x00000137,   // Voltage Trim6, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
+   CPEX_VoltageTrim7 = 0x00000138,   // Voltage Trim7, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001
    CPEX_VoltageTrim8 = 0x00000139,   // Voltage Trim8, just a placeholder
    CPEX_VoltageTrim9 = 0x0000013A,   // Voltage Trim9, just a placeholder
    CPEX_VAAP = 0x0000013B,   // VAAP voltage for TTEC CF3/CK3 heads
@@ -1072,7 +1131,7 @@ typedef enum {
                                     // The PrintEngine's default value depends on the head type; sometimes the user must explicitly choose a sub-type rather than
                                     // relying on a default value.
    CPEX_PltRegVal = 0x00000149,   // Palette register value for the heads that read it from config file (4CF1)
-   CPEX_Hdc_TemperatureUpperLimit = 0x0000014A,   // HDC PCB (psu/amplifiers) overtemperature limit
+   CPEX_Hdc_TemperatureUpperLimit = 0x0000014A,   // HDC PCB (psu/amplifiers) overtemperature limit for TTEC CF3/CK3 heads
    CPEX_AuxTargetTemp = 0x0000014B,   // Aux control target temperature
    CPEX_Heater1_IO = 0x0000014C,   // Heater1 control IO pin (mostly for Q-class heads)
    CPEX_Heater2_IO = 0x0000014D,   // Heater2 control IO pin (mostly for Q-class heads)
@@ -1109,6 +1168,11 @@ typedef enum {
    CPEX_AsicStitch_MaskIdxBottom = 0x0000016C,   // EPSON_S ASIC stitching file index for the nozzles at the bottom of the ASIC.  If zero, the "top" mask is used.
    CPEX_PixelMode = 0x0000016D,   // 'PixelMode' or palette for some of the Kyocera heads. Values: 0-7 (1bpp); 0-5 (2bpp); 0,4-5(4bpp). (HT_K150,HT_K300,HT_K600,HT_K1200,HT_KJ4)
    CPEX_DSelSignals = 0x0000016E,   // 'DSEL' signals value for some of the Kyocera heads. Values: 0-3. (HT_K150,HT_K300,HT_K600,HT_K1200,HT_KJ4)
+   CPEX_SClk = 0x0000016F,   // HDC-HLM SClk period in ns
+   CPEX_WorkToTickleWfScaleCoeff = 0x00000170,   // XeroxW specific scaling coefficient for making tickling WF from a working one
+   CPEX_PulseWidth = 0x00000171,   // Pulse width for HT_SPECTRA
+   CPEX_PulseRampUp = 0x00000172,   // Pulse ramp up time for HT_SPECTRA
+   CPEX_PulseRampDown = 0x00000173,   // Pulse ramp down time for HT_SPECTRA
 } eCFGPARAMEx;
 
 // Definition of StringPool IDs.
@@ -1132,6 +1196,7 @@ typedef enum {
    KSP_FwFiles = 0x0000001C,   // Used to store some specific firmware file names
    KSP_AsicStitch_FN = 0x0000001D,   // string Pool Id for storing head ASIC stitching masks file names (mostly for Epson_S heads).
    KSP_SwGeometryMask_FN = 0x0000001E,   // string Pool Id for storing swath geometry masks file names (mostly for putting them into status report).
+   KSP_ColourBalanceGradients = 0x0000001F,   // string Pool Id for storing colour balance gradients (for use in Nozzle Pattern Detection).
 } eCfgStringPool;
 
 // Return values for printer interface functions
@@ -1176,6 +1241,9 @@ typedef enum {
                                     // The transfer buffer size can be increased using [System] CmdBufSizeDwords or [System] FlashCmdBufSizeDwords.
    RVAL_BLOCKING = 0x00000023,   // The PrinterInterface command queue is already in a blocking command in another thread
    RVAL_ABORTED = 0x00000024,   // A blocked command was aborted
+   RVAL_PARAMID_NOT_REGISTERED = 0x00000025,   // An attempt to set an eCFGPARAMEx in a scope where the current head type doesn't use the parameter
+   RVAL_FAILED_TO_CREATE_PROCESS = 0x00000026,   // Failed to create a sub-process (e.g. for status report creation)
+   RVAL_TIMEOUT = 0x00000027,   // An operation timed out
 } eRET;
 
 // Command opcodes that a print application can send to the Meteor Monitor program
@@ -1193,16 +1261,16 @@ typedef enum {
 
 // Status info regarding the Preload path
 typedef struct {
-   int32   DocsSent;   // Documents sent to the Meteor hardware
-   int32   TotalCopies;   // Total copies to be printed since initialisation
-   int32   CurrentDoc;   // Document number printing now
-   int32   CopiesToGo;   // Copies of this doc left to print
-   int32   DocsToGo;   // Documents left to go
+   int32   DocsSent;   // Number of different documents sent to the Meteor hardware's preload datapath during the current print job.
+   int32   TotalCopies;   // Total copies sent to be printed from the preload datapath during the current print job (the sum of the copy count for each preload document).
+   int32   CurrentDoc_obsolete;   // Obsolete: Document number printing now on USB hardware
+   int32   CopiesToGo_obsolete;   // Obsolete: Copies of this doc left to print on USB hardware
+   int32   DocsToGo_obsolete;   // Obsolete: Documents left to go on USB hardware
 } TPreloadPathInfo;
 
 // Status info regarding the Fifo path
 typedef struct {
-   int32   DocsSent;   // Documents sent
+   int32   DocsSent;   // Documents sent to the Meteor hardware's fifo datapath during the current print job.
 } TFifoPathInfo;
 
 // Printer state values.
@@ -1278,16 +1346,18 @@ typedef struct {
 
 // Pcc Status Structure
 typedef struct {
-   int32   StructVersion;   // <see cref="F:Ttp.Meteor.MeteorConsts.APP_PCC_STATUS_VERSION">Structure version</see>
+   int32   StructVersion;   // Size of the TAppPccStatus structure in bytes.
+                            // N.B. Prior to version v4.6.33054.22 this was hard-wired to APP_PCC_STATUS_VERSION (4).
    int32   IoSignals;   // I/O signal states for PCC and HDCs. Bits[31..24] represent PCC GPIO state, bits [3..0] represent HDC1 GPIO state....bits [15..12] represent HDC8 GPIO state
    int32   bmStatusBits;   // Status word from PCC, BMPS_xxx, see <see cref="T:Ttp.Meteor.Bmps">Bmps</see>
-   int32   JobStatus;   // Job Manager status
-   int32   FpgaVersion;   // Fpga Version number
+   int32   JobStatus_obsolete;   // Obsolete: previously this was the USB Job Manager status
+   int32   FpgaVersion;   // Fpga Version number (unused)
    int32   FwVersion;   // Print Controller firmware version number
    int32   PdCount;   // Product-detect count
    int32   PrintCount;   // Print-count within job
    int32   FaultRegister;   // FaultRegister
-   int32   AbsXCount;   // Absolute x count
+   int32   AbsXCount;   // Absolute X count. Unsigned 24-bit value, so, wraps around 24 bits when increases. 
+                        // In scanning mode can become negative value, which will need to be treated as 2s complement 24-bit code(I.e -1 will be presented as 2^24 -1 == 16777215)
    int32   EncoderCount;   // Encoder count
    int32   bmStatusBits2;   // Additional status bits, see  BMPS2_xxx in <see cref="T:Ttp.Meteor.Bmps">Bmps</see>
    int32   boardIdHigh;   // PCC board id high dword
@@ -1299,7 +1369,10 @@ typedef struct {
    int32   BitsPerPixel;   // Currently selected bits per pixel
    int32   PdCount2;   // Aux product-detect count (Ethernet hardware only)
    int32   PrintCount2;   // Document print count for lane 2 (dual-lane Ethernet configuration only)
-   int32   IpV4Addr;   // PCC-E IpV4 address
+   int32   IpV4Addr;   // PCC IpV4 address
+   int32   MaxHdcs;   // The maximum number of (logical) Hdcs which the PCC supports
+   int32   FpgaTimestamp_ms;   // 1ms timestamp from FPGA timer. Can be used to calculate time interval between status packets.
+                               // Note that this is an unsigned 32-bit value and needs to be treated as unsigned. N.B will overflow and roll over every 49.7 days.
 } TAppPccStatus;
 
 // Some head voltage adjustments are asynchronous. This enumeration
@@ -1346,7 +1419,7 @@ typedef enum {
    DELAY_READ_FAILED = 0x00000005,   // Head reported a failure to read delay settings
    DELAY_READ_TIMEOUT = 0x00000006,   // Timeout occurred when waiting for response to read delay settings
    DELAY_WRITE_TIMEOUT = 0x00000007,   // Timeout occurred when waiting for response to write delay settings
-   DELAY_COMPLETE = 0x00000008,   // Delay setting programming has completed sucessfully
+   DELAY_COMPLETE = 0x00000008,   // Delay setting programming has completed successfully
    DELAY_NOT_USED = 0x000000FF,   // The status field is not used for the current head type
 } eDelaySettingState;
 
@@ -1462,16 +1535,22 @@ typedef struct {
    int32   DocsPrintedA;   // Count of documents which have started printing (single pass) during the current print job (datapath A)
    int32   ImagesStartedA;   // Count of images which have start printing on datapath A, if [System] EnableImageTracking = 1
    int32   ImagesPrintedA;   // Count of images which have completed printing on datapath A, if [System] EnableImageTracking = 1
+   int32   MiscData[32];   // Some abstract data. Interpretation depends on the HDC type. See the TechincalNote.zip section on the specific head type for further information
 } TAppHeadStatus;
 
-// Compact flash write status and progress.  As well as the PCC8 Compact flash card, this now covers
-// several "image store" mechanisms, which can also include a "virtual" Compact flash using the PC's 
-// hard drive, the PCCE UHS SD card, and PCCE DDRM.
+// Image store write status and progress.
+// The image store mechanism allows preloaded image data to persist between print jobs.
+// Where the image store is backed by non-volatile storage, image data persists over a hardware restart.
+// The image store options are:
+// --A UHS SD card fitted to each PCC.
+// --PCC RAM.
+// --A "virtual" Compact flash, which stores data on the PC's hard drive.
+// [The 'TCompactFlashStatus' terminology derives from the Compact Flash card on the now obsolete PCC8]
 typedef struct {
    int32   MaxPccNum;   // Array index of highest active PCC number that has been seen since the Meteor Print Engine started
    int32   Status[255];   // Compact flash status for each PCC
    int32   WritesQueued;   // Always zero.  Previously this was the count of queued write commands sent via PCMD_CF_WRITEFILE, which is now obsolete.
-   int32   CfErrorReg[255];   // Error register data value for each PCC
+   int32   CfErrorReg[255];   // Obsolete: always zero (originally the CF card error register data value for each PCC).
    uint32   MinSizeBlocks;   // The minimum size in 512-byte blocks of all detected Compact Flash cards.  N.B. this can read zero while the cards are initialising.
    int32   SimFlash;   // Non-zero if Meteor is simulating the Compact Flash card using the local PC hard drive
    int32   DirectDdramAccess;   // Non-zero if the PCMD_CF_xxx commands are being routed to preload RAM rather than the UHS SD card (PCCE only)
@@ -1501,69 +1580,6 @@ typedef struct {
                          // All other bits should be ignored by the application.
    uint8   SerialNumber[9];   // HDC serial number
 } SerialNumberStatus;
-
-// IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-// Structure records the raw EEPROM data from the SG1024 printhead
-typedef struct {
-   int32   DataReady;   // Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-                        // still reading data from the head and the application should try again
-                        // later, provided ChecksumFail is not set.
-   int32   ChecksumFail;   // Flag set if the Eeprom data read has completed but the data checksum 
-                           // has failed
-   uint8   PrintheadSerialNumber[32];   // Printhead serial number string, NULL terminated
-   int32   CalibrationVoltage;   // Calibration voltage (for the entire 1024-jet head)
-} TAppSG1024Eeprom;
-
-// IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-// Ricoh Vpp Eeprom string
-typedef struct {
-   uint8   Vpp[7];   // Vpp
-} TAppRicohVpp;
-
-// IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-// Structure records the raw EEPROM data from the Ricoh Gen4 printhead.
-typedef struct {
-   uint8   PartNumber[9];   // Part Number
-   uint8   SerialNumber[13];   // Serial Number
-   TAppRicohVpp   VppOdd[2];   // Vpp1 and Vpp2 odd
-   TAppRicohVpp   VppEven[2];   // Vpp1 and Vpp2 even
-} TAppRG4Eeprom;
-
-// IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-// Structure records the raw EEPROM data from 2 Gen4 heads connected the Ricoh HDC
-typedef struct {
-   int32   StructVersion;   // Structure Version
-   int32   PccNumber;   // Pcc number (1 - n) for this record
-   int32   HeadNumber;   // Head number (1 - n) for this record
-   int32   DataValidHead1;   // Is the Eeprom data valid for head 1
-   TAppRG4Eeprom   Head1Eeprom;   // Data read from the head 1 Eeprom (valid if DataValidHead1 is non-zero)
-   int32   DataValidHead2;   // Is the Eeprom data valid for head 2
-   TAppRG4Eeprom   Head2Eeprom;   // Data read from the head 2 Eeprom (valid if DataValidHead2 is non-zero)
-   int32   DataReady;   // Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-                        // still reading data from the head and the application should try again
-                        // later, provided ChecksumFail is not set.
-} TAppRG4HDCEeprom;
-
-// IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-// Structure records the raw EEPROM data from the Ricoh Gen5 printhead.
-typedef struct {
-   uint8   PartNumber[9];   // Part Number
-   uint8   SerialNumber[13];   // Serial Number
-   TAppRicohVpp   VppLineA[2];   // LineA Vpp1 and Vpp2
-   TAppRicohVpp   VppLineB[2];   // LineB Vpp1 and Vpp2
-   TAppRicohVpp   VppLineC[2];   // LineC Vpp1 and Vpp2
-   TAppRicohVpp   VppLineD[2];   // LineD Vpp1 and Vpp2
-   int32   StartDate;   // Day when the head was first used [1..31]
-   int32   StartMonth;   // Month when the head was first used [1..12]
-   int32   StartYear;   // Year when the head was first used [2000..2100]
-   int32   LastUpdateDate;   // Day when the dropcounter was last updated [1..31]
-   int32   LastUpdateMonth;   // Month when the dropcounter was last updated [1..12]
-   int32   LastUpdateYear;   // Year when the dropcounter was last updated [2000..2100]
-   uint64   LastDropcounterVal;   // Value of dropcounter, not CLS-compliant
-   int32   DataReady;   // Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-                        // still reading data from the head and the application should try again
-                        // later, provided ChecksumFail is not set.
-} TAppRG5Eeprom;
 
 // Meteor status fields required for Drop Tuner
 typedef struct {
@@ -1621,18 +1637,6 @@ typedef struct {
    int32   SptCurrentPztTemperatureCD;   // Seiko Printek current PZT temperature for Row C and D (1024 only)
    char   checkString[4];   // Marshaling check string should be "TTP"
 } TDropTunerStatus;
-
-// Lexmark print head status
-typedef struct {
-   int32   InkType;   // Ink type (0-63)
-   int32   InkLevel;   // Ink fill level (0-100%)
-   int32   DropsPrinted;   // Drops printed
-   int32   Valid;   // Non zero when cartridge is valid
-   int32   SerialNumber;   // Serial number (0-65535)
-   int32   FirstUsed;   // First used time (32-bit POSIX time)
-   uint8   Eeprom[16];   // Raw EEPROM data
-   bool   PrintingEnabled;   // Flag indicating when printing is enabled (EEPROM data read complete)
-} TLexmarkStatus;
 
 // Details of the location of each colour plane as defined in the Meteor configuration file
 // The lookup Arrays are zero indexed - i.e. the details of "plane 1" are at index 0 in each array etc.
@@ -1722,12 +1726,15 @@ typedef struct {
 typedef struct {
    uint32   StructureSizeBytes;   // [In] Size of the WatermarkDetails structure in bytes. Must be filled in by the user
    uint32   JobSetId;   // [In] The Job Set ID to watermark
+   uint32   JobId;   // [In] The Job ID to watermark. If larger than number of jobs, we'll use JobId % NumJobs
+   uint32   PositionId;   // [In] The Position Id to watermark. If final position, <see cref="F:Ttp.Meteor.eRET.RVAL_EOF" /> is returned by PiGenerateWatermark()
    bool   FreeBuffers;   // [In] Set to true to free the watermark buffers for the given <see cref="F:Ttp.Meteor.WatermarkDetails.JobSetId" />
-   char   Content[33];   // [In] The data in the watermark to uniquely identify it, always a string with 32 characters + '\0'
+   char   Content[33];   // [In/Out] The data in the watermark to uniquely identify it, always a string with 32 characters + '\0'.
+                         // If it is set to "" after returning then the next position requires a new content.
    uint32   ImageBufferIdsOut[32];   // [Out] Image buffer indexes that have been watermarked, per plane
-   uint32   XPosOut;   // [Out] The x-position to print the watermark at
-   int32   YPosOut;   // [Out] The y-position to print the watermark at
-   uint32   Width;   // [Out] The width of the watermark
+   uint32   XPosOut[32];   // [Out] The x-position to print the watermark at, per plane
+   int32   YPosOut[32];   // [Out] The y-position to print the watermark at, per plane
+   uint32   Width[32];   // [Out] The width of the watermark, per plane
 } WatermarkDetails;
 
 #define ImgDetailsRgbTiff 0x00000001   // The file is an RGB TIFF (i.e. it needs RIPPing before it can be printed)
@@ -1820,6 +1827,16 @@ typedef struct {
    int32   FirstAltPlane;   // [IN] Index (zero based) of the first plane for the alternate pages in double sided mode
    int32   OneBppMapMode;   // [In] A one bit-per-pixel RIP config can be used to generate a raster image for printing at two or four bits-per-pixel
                             // In this case, OneBppMapMode is the grey level used for all non-zero pixels
+   bool   UseLegacyMode;   // [IN] N.B Allows the user to select to use the old version of the Inline RIP for compatibility.
+                           // Enable this option will disable the option of running with scalable RIP but for users that don't need it will improve backward compatibility
+   int32   BufferCount;   // [IN] The amount of channel buffers that will be created and filled before the RIP is stalled.
+                          // This value is multiplied by the amount of scalable threads that is used (if using scalable otherwise just uses the number)
+                          // It is advised for smaller files to use more and larger files less.
+   bool   ScalableRip;   // [IN] N.B Enables scalable RIP mode allowing for multiple threads to be use to RIP the files.
+                         // Testing suggests that you need to keep the CPU usage below 100% otherwise this will not be a big performance increase
+   uint32   ScalableThreads;   // [IN] The number of threads used in scalable mode
+   uint32   ScalableMemory;   // [IN] The amount of memory that the RIP can use while in scalable mode. This is in MB
+                              // This is divided evenly between the the RIPs eg. 4 RIPs with 16000 Memory will give 4000 to each
 } RipDetails;
 
 // In/Out parameters for PiRipPreview
@@ -1881,7 +1898,9 @@ typedef struct {
    int32   XResDividerMed;   // X resolution divider used for printing at medium resolution <see cref="F:Ttp.Meteor.eRES.RES_MED" />
    int32   XResDividerLow;   // X resolution divider used for printing at low resolution <see cref="F:Ttp.Meteor.eRES.RES_LOW" />
    int32   YDpi;   // Y resolution defined by the configuration file in Dots Per Inch.  Derived from the print head's native resolution and the configured Y interlace (if set); assumes sabre angles are not being used.
-   int32   YSpanPixels;   // The maximum Y span of an image; this is the minimum Y span over all configured planes.  Normally, all planes should have the same Y span.  More information can be found via <see cref="T:Ttp.Meteor.MeteorPlaneConfig" />
+   int32   YSpanPixels;   // The maximum Y span of an image; this is the minimum Y span over all configured planes.  Normally, all planes should have the same Y span.
+                          // More information can be found via <see cref="T:Ttp.Meteor.MeteorPlaneConfig" />
+                          // Does not take into account planes with extended plane indexes greater than 32 (<see cref="F:Ttp.Meteor.MeteorConsts.MAX_PLANES" />)
    bool   bSupports1BppPrintData;   // Does the current head type support one bit per pixel print data
    bool   bSupports2BppPrintData;   // Does the current head type support two bits per pixel print data
    bool   bSupports4BppPrintData;   // Does the current head type support three bits per pixel print data.  N.B. the print data sent to Meteor must be padded to four bits per pixel; the most significant bit is ignored.
@@ -1897,7 +1916,12 @@ typedef enum {
    ePRT3_FILE = 0x00000005,   // PRT file type 3 (.PRT is generally an application specific file type)
    ePDF_FILE = 0x00000006,   // PDF file (a PDF file needs to be Ripped before it can be printed)
    eRGB_TIF_FILE = 0x00000007,   // RGB TIFF file (i.e. a TIFF file which needs to be Ripped before it can be printed)
-   eXML_LOC_FILE = 0x00000008,   // XML File that contains the location data for mixed mode
+   eXML_LOC_FILE = 0x00000008,   // XML file that contains the location data for mixed mode
+   eXML_TEST_PATTERN_FILE = 0x00000009,   // XML file that contains information about how to generate a test pattern like one in the preview image
+   eBMP_FILE = 0x0000000A,   // BMP file (.bmp is generally used for preview files but can sometimes contain raster print data)
+   ePNG_FILE = 0x0000000B,   // PNG file
+   eJPG_FILE = 0x0000000C,   // JPG file
+   ePRINTABLE_BMP_FILE = 0x0000000D,   // BMP file containing printable raster data
 } eImageFileType;
 
 // Options for over-riding the configured nozzle compensation mode on a per-document basis
@@ -1943,10 +1967,12 @@ typedef struct {
    uint8   Data[128];   // in: write data, out: read data
 } TEepromCtrl;
 
-// Parameters for the CreateStatusReport API
+// Parameters for the PiCreateStatusReport API
 typedef struct {
    int32   StructureSizeBytes;   // Size of this structure in bytes.  Must be filled in by the user.
-   uint32   CtrlFlags;   // Control bit flags.  set Bit0 to include *.sim files into the status report
+   uint32   CtrlFlags;   // Control bit flags.
+                         // Set Bit0 to include *.sim files into the status report.
+                         // Set Bit1 to return as soon as the status report batch file is launched, default is to wait for it to complete.
    char   UserMessage[256];   // Optional user message to log
 } TStatusReportParams;
 
@@ -1960,11 +1986,11 @@ typedef enum {
    STATUS_COMPACT_FLASH = 0x00000003,   // Request TCompactFlashStatus
    STATUS_DROP_TUNER = 0x00000004,   // Request DropTunerStatus
    STATUS_CONTINUOUS_PRINT = 0x00000005,   // Request TContinuousPrintStatus
-   STATUS_VISTA = 0x00000006,   // Request TVistaStatus
-   STATUS_LEXMARK = 0x00000007,   // Request LexmarkStatus
-   STATUS_SG1024_EEPROM = 0x00000008,   // Request TAppSG1024Eeprom
-   STATUS_RG4HDC_EEPROM = 0x00000009,   // Request TAppRG4HDCEeprom
-   STATUS_RG5_EEPROM = 0x0000000A,   // Request TAppRG5Eeprom
+   STATUS_RESERVED0 = 0x00000006,   // Reserved/deprecated
+   STATUS_RESERVED1 = 0x00000007,   // Reserved/deprecated
+   STATUS_SG1024_EEPROM = 0x00000008,   // Deprecated, use STATUS_EEPROM_DATA instead
+   STATUS_RESERVED2 = 0x00000009,   // Reserved/deprecated
+   STATUS_RG5_EEPROM = 0x0000000A,   // Deprecated, use STATUS_EEPROM_DATA instead
    STATUS_SWATHSEPARATOR = 0x0000000B,   // Request SwathSeparatorStatus (for ScanEngine SDK internal use only)
    STATUS_SWATHDETAILS = 0x0000000C,   // Request SwathDetails (for ScanEngine SDK internal use only)
    STATUS_EEPROM_DATA = 0x0000000D,   // Generic request for head EEPROM contents in JSON format

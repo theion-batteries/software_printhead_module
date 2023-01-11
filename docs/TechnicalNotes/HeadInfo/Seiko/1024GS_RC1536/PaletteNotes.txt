@@ -1,0 +1,80 @@
+=================================================================================================
+Some information regarding Seiko RC1536 and Sii1024GS palettes
+=================================================================================================
+
+----------- Seiko RC1536 and Sii1024GS palette
+
+These head types allow setting palette. Palette data consists of two 32-bit words. 
+Each word is considered having 16 4-bit nibbles. Each nibble should have value in range 0..8
+So, in the config file it is possible to specify 2 parameters that override default palette values.
+Their names are: "Palette0" and "Palette1".
+
+"Palette0" parameter (default value 0x76543210) specifies low 32-bit word of whole 64-bit palette register.
+"Palette1" parameter (default value 0x33332108) specifies high 32-bit word of whole 64-bit palette register.
+
+These parameters can be specified in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y] sections the same 
+way as "PaletteMode" parameter described below.
+
+Each head on HDC can have its own palette settings.
+
+
+
+--- whole 64-bit palette registed specifies mapping grey scale values to the print data as follows:
+
+    ------- "Palette0" parameter (default value 0x76543210)
+          | 31:28 | 27:24 | 23:20 | 19:16 | 15:12 | 11:8  |  7:4  |  3:0  |
+    1bpp  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  px1  |  px0  |
+    2bpp  |  n/a  |  n/a  |  n/a  |  n/a  |  px3  |  px2  |  px1  |  px0  |
+    4bpp  |  px7  |  px6  |  px5  |  px4  |  px3  |  px2  |  px1  |  px0  |
+
+    ------- "Palette1" parameter (default value 0x33332108)
+          | 31:28 | 27:24 | 23:20 | 19:16 | 15:12 | 11:8  |  7:4  |  3:0  |
+    1bpp  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |
+    1bpp  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |  n/a  |
+    4bpp  |  px15 |  px14 |  px13 |  px12 |  px11 |  px10 |  px9  |  px8  |
+
+
+
+----------- palette mode
+
+Seiko RC1536 HDC allows using "palette mode" parameter.
+It can be specified in the config file and has following meaning:
+
+Mode 0: (default value) Palette operates as previously 
+
+Mode 1: Value selected from palette alternates across a printhead row, selecting from palette slots 0-7 or 8-15. 
+        For example, an input value of 1 will select between palette value 1 or 9 depending on nozzle number.
+
+Mode 2: Value selected from palette alternates across a printhead row and row being printed, 
+        selecting from palette slots 0-7 or 8-15. 
+        For example an input value of 1 will select between palette value 1 or 9 depending on nozzle number, 
+        with the value selected for a specific nozzle alternating between printed rows.
+
+
+So, this parameter has name "PaletteMode" and its valid values: 0(default), 1, 2.  
+
+It can be used in following sections: 
+    [DefaultParameterValues] for whole system 
+    [ControllerX]            on a PCC level.
+    [HeadDriverX:Y]          on HDC level
+
+Setting this parameter in [ControllerX] allows setting different values for individual HDCs on a given PCC,
+and you'll have to provide a list of exactly 8 values, one per HDC.
+
+Setting this parameter in [HeadDriverX:Y] allows setting different values for individual heads on a given HDC,
+and you'll have to provide a list of 2 values, one per head.
+
+For example:    
+
+    [HeadDriver1:1]
+    PaletteMode= 1,2 ; values for PCC1:HDC1:Head1 and PCC1:HDC1:Head2 respectively
+    ;Palette0 = 0x76543210, 0x76543213  ;-- define palette low word  for Head1 and Head2
+    ;Palette1 = 0x33332108, 0x33332A05  ;-- define palette high word for Head1 and Head2
+
+
+
+
+
+
+
+

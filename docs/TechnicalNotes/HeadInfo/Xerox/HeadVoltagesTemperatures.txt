@@ -1,0 +1,33 @@
+=================================================================================================
+    Some information regarding Xerox W-series head voltages / temperatures  
+=================================================================================================
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+
+
+
+    TAppHeadStatus::Temperature1    head temperature, 10x scaled
+    TAppHeadStatus::Temperature2    PDC Amplifier1 temperature
+    TAppHeadStatus::Temperature3    PDC Amplifier2 temperature
+    TAppHeadStatus::Temperature4    PDC PSU1 Temp
+    TAppHeadStatus::Temperature5    PDC PSU2 Temp
+
+    TAppHeadStatus::HeadVoltage     VBias, absolute value
+    TAppHeadStatus::AbsHeadVoltage  PDC input voltage
+    TAppHeadStatus::Temperature6    PDC Amplifiers current, ma
+
+
+
+

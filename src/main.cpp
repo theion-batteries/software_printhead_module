@@ -1,22 +1,34 @@
-
-
 #include "meteorAdapter.h"
+#include <chrono>
+#include <thread>
+
+meteorAdapter phInterface;
+
 int main()
 {
-    eRET open = PiOpenPrinter();
-    //uint32 buffer[4] = { PCMD_STARTJOB, 4, 1, JT_SCAN };
-    //auto cmd = PiSendCommand(buffer);
-    std::cout << open << std::endl;
-    eRET power = PiSetHeadPower(1);
-    std::cout << power << std::endl;
-    bool status = PiIsBusy();
-    std::cout << status << std::endl;
-    /*for (const auto& b : buffer) {
-        std::cout << power << std::endl;
-        std::cout << b << std::endl;
-    }*/
-    
+    std::cout << "***************************  testing meteor sdk apis *****************************" << std::endl;
+    std::cout << "eret functions tests" << std::endl;
+    std::cout << "test succes return code: 0 " << std::endl;
+    std::cout << "test error return code: see docs " << std::endl;
 
+    std::cout << "test1: open connection to print engine (print engine must be running !)" << std::endl;
+    phInterface.connect();
+    std::cout << "test2: set head power on" << std::endl;
+ 
+    phInterface.turnOnPh();
+
+    std::this_thread::sleep_for(std::chrono::seconds(20));
+
+    std::cout << "test3: set head power off" << std::endl;
+    phInterface.turnOffPh();
+
+    std::cout << "test4: close connection to print engine (print engine must be running !)" << std::endl;
+    phInterface.disconnect();
+
+    std::cout << "bool functions tests" << std::endl;
+    std::cout << "test4: is printer busy" << std::endl;
+    bool status = PiIsBusy();
+    std::cout << "return code: " << status << std::endl;
 
 }
 

@@ -1,0 +1,116 @@
+=================================================================================================
+    Some information about configuration parameters for KY0600_EX (KJ4B-0600-020SP) head type.
+=================================================================================================
+
+This document contains description of so called "PrintEngine" parameters (PeParameters) that configure 
+Meteor PrintEngine for the particular head type.  Some of the parameters are generic for all head types, some of them
+exist only for specific head types.
+This document doesn't describe technical details of PeParameters scopes, overriding mechanism and so on.
+
+Most of the parameters can be set via configuration file and via SetParamEx() API.
+All parameters can be read via GetParamEx() API.
+
+Parameter is identified as follows:
+
+name:           Name in the Meteor config file. 
+id:             Parameter Id to use for SetParamEx/GetParamEx API
+valid range:    Some parameters can have restricted values. E.g. voltage in range [5.2...25.0] volts.
+def:            default value
+scope:          Config file PCC/HDC/Head/JA level this parameter can be applied to.
+
+
+-------------------------------------------------------------------------------------------------
+----------- generic parameters that apply for all head types most of the times
+-------------------------------------------------------------------------------------------------
+
+name:Xoffsets, id:CPEX_X_Offset, valid range:any, def:0, scope: PCC-[ControllerX] section
+Head X-offset in 1/100 of a pixel (centipixels, cpix)
+Note that in a config file XOffset values specified in pixels.
+
+---
+
+name:Yoffsets, id:CPEX_Y_Offset, valid range:any, def:0, scope: PCC-[ControllerX] section
+Head Y-offset in pixels 
+
+---
+
+name:WaveformFileIdx, id:CPEX_WF_FileIdx, valid range:[0..100], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+Waveform file index. For more information see "WF_Info.txt" file in head-specific Waveform directory.
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:Row_X_Adj_um, id:CPEX_RowX_Adj_um, valid range:[-999..999], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+Nozzle row fine adjustment in microns. Offset from the nominal position.
+
+name:Row_X_Adj_cpix, id:CPEX_RowX_Adj_cpix, valid range:[-600..600], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+Nozzle row fine adjustment in cpix. Offset from the nominal position.
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:RevScan_X_Adj_cpix, id:CPEX_RevScan_X_Adj_cpix, valid range:ANY, def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+X Adjust value for reverse scan in cpix. Offset from the nominal position.
+
+name:RevScan_X_Adj_um, id:CPEX_RevScan_X_Adj_um, valid range:ANY, def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+X Adjust value for reverse scan in microns. Offset from the nominal position.
+
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:FwdScan_X_Adj_cpix, id:CPEX_FwdScan_X_Adj_cpix, valid range:ANY, def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+X Adjust value for forward scan in cpix. Offset from the nominal position.
+
+name:FwdScan_X_Adj_um, id:CPEX_FwdScan_X_Adj_um, valid range:ANY, def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+X Adjust value for forward scan in microns. Offset from the nominal position.
+
+
+-------------------------------------------------------------------------------------------------
+----------- Head-specific parameters
+-------------------------------------------------------------------------------------------------
+
+---
+Head voltages/temperatures. For more information see "HeadVoltagesTemperatures.txt" file.
+
+name:HeadTargetTemperature, id:KPEX_TargetTemp, valid range:[15..45],  def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+name:HeadVoltage,   id:KPEX_HeadVoltage,    valid range:[22.0..28.0], def:0.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+name:HeadVoltageAdj,id:KPEX_HeadVoltageAdj, valid range:[-3.2..+3.2], def:0.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+---
+"PrintUnit delays" file index, see "WF_Info.txt" file.
+name:FlagDataFileIdx, id:KPEX_FlagData_FileIdx, valid range:[0..100], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+---
+Palette register value. For more information see "WF_Info.txt" file.
+name:PltRegVal, id:KPEX_PltRegVal, valid range:any,  def:0x76543210, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+---
+name:HeadSubType, id:KPEX_HeadSubType, valid range:0,1. def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+See "HeadSubTypes.txt" for more information.
+
+=================================================================================================
+    Some information about KY0600_EX head configuration driven by PDC-2K600EX
+=================================================================================================
+
+-- Hardware configuration:
+    PDC-2K600EX drives two heads. Default Meteor config file is: "DefaultKY0600_EX.cfg"
+
+
+
+-- Notes on PCC/HDC/Head configuration:
+    Basically, PDC-2K600EX is a usual PCC that drives 2 HDCs, each HDC drives one head. The only thing that
+    PCC+HDCs are located on the same PCB. So, heads addressing looks as follows:
+
+        Head1 on PDC5 ->  PCC:5, HDC:1, Head:1
+        Head2 on PDC5 ->  PCC:5, HDC:2, Head:1            
+    
+    Note that head index is always 1 (HDC drives one head only), but HDC index specifies which "head" is
+    being addressed.
+
+
+
+

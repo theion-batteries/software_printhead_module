@@ -1,0 +1,100 @@
+------------------------------------------------------------------------
+    Some notes regarding HDC-RG4/RG5 head specific features
+------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------
+HDC-RG5 drives one head that has 4 nozzle rows (or JAs). In Ricoh documentation
+they referred as rows 1(A), 2(B), 3(C), 4(D)
+
+simplified HDC-RG5 layout looks as follows:  
+
+    * this is a view THROUGH the head to the media 
+    * heads orientation is 0
+
+
+ 
+            Row1    Row2                Row3    Row4   <-- Physical numbering / offsets
+            0.0mm   0.5503mm           11.811mm 12.361mm        
+
+Ricoh Row   [A]      [B]                [C]      [D]   <--- (as in RG5 specs)
+Definition
+            ---------------------------------------      
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+             [........]                 [........]           
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+            ---------------------------------------      
+
+
+HDC row:     0        2                 1        3     <--- (data slot index mod 4)
+
+            JA0      JA1               JA2      JA3    <--- (used in context of PrintEngine configuration)         
+
+
+--- this is for PCC-E configuration! Two separate TickOffset registers for FWD/REV tick offsets
+Tick Offset  0        1                 2        3     <--- FORWARD offsets      
+Reg Nibble   0        1                 2        3     <--- REVERSE offsets      
+
+
+--- this is for PCC-8 configuration! One single TickOffset register
+Tick Offset  0        1                 2        3     <--- FORWARD offsets      
+Reg Nibble   4        5                 6        7     <--- REVERSE offsets      
+
+
+
+
+------------------------------------------------------------------------
+HDC-RG4 drives two heads that, each head has 2 nozzle rows (or JAs). In Ricoh documentation
+they referred as "odd" (1), and "even"(2)
+
+simplified HDC-RG4 layout looks as follows:  
+
+    * this is a view THROUGH the head to the media 
+    * heads orientation is 0
+
+
+ 
+            0.0mm   0.5292mm           0.0mm   0.5292mm        
+
+Ricoh Row   [odd]   [even]            [odd]    [even]   <--- (as in RG4 specs)
+Definition
+           +-- head 1 --+             +-- head 2 --+
+           | o        o |             | o        o |          
+           | o        o |             | o        o |          
+           | o        o |             | o        o |          
+           | o        o |             | o        o |          
+           | [........] |             | [........] |          
+           | o        o |             | o        o |          
+           | o        o |             | o        o |          
+           | o        o |             | o        o |          
+           +------------+             +------------+
+
+
+HDC row:     0        2                 1        3     <--- (data slot index mod 4)
+
+            JA0      JA1               JA2      JA3    <--- (used in context of PrintEngine configuration)         
+
+                                                         
+--- this is for PCC-E configuration! Two separate TickOffset registers for FWD/REV tick offsets
+Tick Offset  0        1                 2        3     <--- FORWARD offsets      
+Reg Nibble   0        1                 2        3     <--- REVERSE offsets      
+
+
+--- this is for PCC-8 configuration! One single TickOffset register
+Tick Offset  0        1                 2        3     <--- FORWARD offsets      
+Reg Nibble   4        5                 6        7     <--- REVERSE offsets      
+
+!!! Notes: despite HDC-RG4 driving explicitly 2 heads, PE-Addressing (at least for Waveforms) uses Head:0 and JA0..3 !
+!!! This is becasue this functionality had been retrofitted on top of the existing code that was the same for RG4/RG5
+
+
+
+
+
+
+

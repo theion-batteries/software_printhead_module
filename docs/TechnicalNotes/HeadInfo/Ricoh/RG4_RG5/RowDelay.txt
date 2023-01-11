@@ -1,0 +1,32 @@
+=================================================================================================
+    Some information on setting "Row Delay" for RG5 head
+=================================================================================================
+
+Note: This feature is available only for RG5 head, PCC-E and Cyclone4 HDC version.
+
+RG5 HDC drives one head that has 4 nozzle rows or JAs. "Row Dealay" feature allows setting individual delays
+for every JA. This delay can be in range [0..100] microseconds. Default value is 0us.
+
+CPEX_RowDelay parameter is used for this and it can be set either in Meteor config file or via SetParamEx() API.
+Row delays are applied on StartJob.
+
+
+--- Meteor config file set up.
+In order to set row delays, it is necessary to specify "RowDelay_us" parameter in the config file. 
+It can be placed in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y] and [HeadX:Y] sections.
+
+As soon as the most common use case is assigning different row delays for individual JAs, this parameter is the most 
+likely to be used in [HeadX:Y] section. For this section parameter value is represened by a list of 4 values, each 
+one is a "row delay" in microseconds for head nozzle rows.
+
+For example:
+
+[Head1:4]
+RowDelay_us = 11,12,13,14; ;-- values for JA0, JA1, JA2, JA3 respectively
+
+
+You can additionally check Meteor log for the line that should look like: (you will need to enable "Setup" log category)
+
+   "Write RowDelay PCC:1, HDC:4  Reg:0x443, Value:0x0e0d0c0b"
+
+

@@ -1,0 +1,48 @@
+=================================================================================================
+    Some information regarding  Epson I3200 head voltages / temperatures  
+=================================================================================================
+
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+    TAppHeadStatus::Voltages[0]  -> HDC supply current, ma
+    TAppHeadStatus::Voltages[1]  -> VHV voltage,  10x scaled
+    TAppHeadStatus::Voltages[2]  -> VBS voltage,  10x scaled
+    TAppHeadStatus::Voltages[3]  -> VH voltage,   10x scaled
+
+
+    TAppHeadStatus::Temperature1 -> head temperature.
+
+    TAppHeadStatus::Temperature2 -> high 16 bits: B1 amplifier, low 16 bits: A1 amplifier temperatures
+    TAppHeadStatus::Temperature3 -> high 16 bits: B2 amplifier, low 16 bits: A2 amplifier temperatures
+
+
+
+
+-------------------------------------------------------------------------------------------------
+--------- Notes on the so-called "Head voltages" on the head label and from head EEPROM 
+-------------------------------------------------------------------------------------------------
+
+The label on the head and head EEPROM, see "HeadEepromData.txt" has some number of codes that describe a 
+number of voltage values: "VhN1RT", "VhN1RT_AB" and so on.
+There are some points to take into account:
+
+    * This type of head doesn't have "head driving voltage" as such. It uses trapesoidal analogue waveform
+      with several pulses (see "WF_Info.txt", "WaveformsScaling.txt").
+
+    * Head specs have some quite specific waveform examples, and those "VhN1RT", "VhN1RT_AB" values define 
+      amplitude of certain pulse in those waveform from the specs.
+
+    * Customers are free to develop their own waveforms, which can be quite different from examples in head
+      specs. Waveform shape/number of pulses depends on many factors, like number of grey levels, printing speed,
+      ink type and so on.
+
+Thus, all these "VhN1RT", "VhN1RT_AB", etc. voltages do not look very useful. Though those values may be used
+to calculate waveform scaling factors between head ASICs (see "WaveformsScaling.txt"). No idea how useful it might be.
+  

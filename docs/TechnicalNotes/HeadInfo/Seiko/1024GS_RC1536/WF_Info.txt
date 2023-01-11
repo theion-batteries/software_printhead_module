@@ -1,0 +1,109 @@
+=================================================================================================
+    
+Some information on the waveform files for Seiko 1024GS/RC1536 heads.
+Both types 1024GS and Sii1536 use absolutely the same waveforms and corresponding settings
+
+=================================================================================================
+
+
+--- Hardware configuration:
+
+    * HDC drives 2 Seiko 1024GS/RC1536 heads
+    * Every head has 4 nozzle rows or "Jetting assemblies", JAs
+    * But two adjacent JAs are grouped together to form a "Head Module". According to Seiko
+        documentation head is made of  "Module1" and "Module2", each module consists of "rowA" and "rowB"
+    * So, in our terminology JA1 corresponds to Module1, rowA; JA2->Module1, rowB; JA3->Module2, rowA; JA4->Module2, rowB.
+
+
+Using settings in the config file it is possible to assign individual waveforms to all heads in the system, 
+all heads on the same HDC or even separate head modules. 
+Note that it is not possible to assign WF to individual nozzle row or JA, only to a pair of JAs, making "Head Module".
+
+Waveforms for these types of Seiko heads are represented by a series of binary signals. 
+There are 9 series of such signals, Seiko documentation describes them as Waveform0..Waveform8.
+Waveform0..Waveform7 are used to print grey levels 0..7 accordingly and Waveform8 is "common" waveform for all
+nozzles.
+
+These Waveform0..Waveform8 data along with "SampleClock" value are described by Meteor waveform file.
+
+Such file contains:
+
+    * "sampleclk" key that specifies SampleClick frequency in MHz (integer value)
+    * "waveform0".."waveform8" keys describing all 9 binary wafeforms acordingly.
+      "waveformX" key has a value of comma separated tokens "A@B", where "A" if the seqience length in SampleClock ticks and
+                  "B" is WF value 0 or 1. Thus, "153@0,16@1"  describes 153 zeroes followed by 16 '1's. Note that there is
+                  no direct relationship between "A@B" token and waveform "StateRegister" (see Seiko head specs). A single
+                  WF State register describes upto 127 SampleClock tick sequence, and in the latter example we have 153 zeroes
+                  in the token "153@0". Thus, this long sequence will occupy 2 State Registers. 
+
+There are some restrictions that apply to waveforms: 
+
+*   "Sample clock frequency" can be 10MHz only. If other value is specified in the WF file, an error will be logged and
+    Sample clock frequency will be forcedly set to 10MHz.
+
+*   "waveform0".."waveform8" have inter-dependencies and if these dependencies are not right the it is possible to damage
+                             the head.  These waveforms inter-dependencies impose following restrictions (they are described in 
+                             Seiko head specs):
+    - All waveforms 0..8 MUST start with level 0   
+    - waveforms can end up with level 1 (StateReg19 can define level '1'). We have been given to understand that in this 
+        case head ASIC will automatically reset WF to 0 at the end of the cycle.
+    - It is OK if several WFs have raising edge at the same time (same sample clock tick)
+    - It is OK if several WFs have falling edge at the same time (same sample clock tick)
+    - It is OK if any falling edge occurs when any WF has '1' state
+
+    - prohibited: any raising edge when any WF has '1' state
+    - prohibited: time between any WF raising edge and any WF falling edge is < 0.2us
+    - prohibited: time between raising edge of 'COM' waveform0  any WF falling edge is < 0.4us
+    - StateReg0 timing values can be any (0..127), but for S1-S19 timing values can't be 1. I.e. it might not be possible
+        to describe WF pulse with the length of 1 sample clock tick.
+
+
+
+--- Waveforms configuration in Meteor config file:
+
+    * As mentioned above, each head can have up to 2 WFs
+    * Waveforms data is stored files, e.g. "Sample1024GsWaveform.txt"
+    * These file names/paths are listed in "head section". e.g [1024GS]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+
+Configuration example:
+
+    [1024GS]
+    ;-- Up to 100 waveform files can be specified here
+    Waveform1 = "1024GsWaveform_1.txt" 
+    Waveform2 = "1024GsWaveform_2.txt" 
+    Waveform3 = "1024GsWaveform_3.txt"
+    Waveform4 = "1024GsWaveform_4.txt"
+
+    [DefaultParameterValues]  ;--- Global system level 
+    WaveformFileIdx = 1       ;--- All heads in the system will use waveform: "1024GsWaveform_1.txt"    
+
+    ;---Settings specific for PCC1
+    [Controller1]             ;--- PCC level, (overrides settings in [DefaultParameterValues] section) 
+    
+    ;-- WF indices for HDC1..HDC8 respectively on PCC1. Each HDC drives 2 heads, both heads on the same HDC will get the same WF.
+    WaveformFileIdx  = 1,2,1,2,2,3,1,1 
+
+    ;---Settings specific for PCC1:HDC1
+    [HeadDriver1:1] ;-- HDC level, overrides settings in [ControllerX] section
+
+    ; Waveform file indices for individual heads on this HDC. Every module (made of 2 nozzle rows) on a particular 
+    ; head will have the same waveform, unless overridden below (see [Head1:1:1] section).
+    WaveformFileIdx = 3, 4  ; heads 1,2 on this HDC will have WF data from files with indices 3,4
+
+    ;---Settings specific to individual nozzle rows on PCC1:HDC1:Head1
+    [Head1:1:1] ;-- Head level, overrides settings in [HeadDriverX:Y] section
+
+    ; Waveform file indices for every row on this particular head. This key overrides the same one in [HeadDriver1:1] section.
+    ; Note that waveform is applied to a "module" made of 2 nozzle rows. Thus, we have 4 nozzle rows and 2 waveforms per head.
+    ; Because of that waveform file index must be the same for nozzle rows 1,2 and 3,4. I.e. it should look like A,A,B,B
+    WaveformFileIdx    = 1, 1, 3, 3  ; nozzle rows1,2 (module 1) will have WF file index 1; rows3,4 (module 2) will have WF file index 3
+
+    
+
+
+
+
+
+

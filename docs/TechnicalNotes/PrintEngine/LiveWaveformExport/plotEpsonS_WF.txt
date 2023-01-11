@@ -1,0 +1,27 @@
+####
+#   This is the GnuPlot script that parses Meteor WF "Live info" dumps from "WfLiveInfo" directory
+#   and generates waveforms graphical representation.
+#   Head types: Epson S3200, S1600, S800
+#
+#   You need to set FileName to the file name you want to see. It seems that it requires absolute path
+#   
+####
+
+reset
+
+
+FileName='C:\MeteorRepos\main\Software\Installer\Config\WfLiveInfo\WfInfo_01-01-01-01.txt'
+
+set xrange [0: 80000] 
+set yrange [0: 32000] 
+
+set multiplot layout 2,1
+
+#-- display ComA waveform from the 1st block of data
+plot FileName index 0  with linespoints title "ComA WF"
+
+#-- display ComB waveform from the 2nd block of data
+plot FileName index 1  with linespoints title "ComB WF"
+
+
+

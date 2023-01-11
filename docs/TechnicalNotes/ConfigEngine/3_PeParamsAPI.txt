@@ -1,0 +1,190 @@
+=================================================================================================
+    
+Some information on PrintEngine API that deals with PE-addressing and PE-parameters
+
+=================================================================================================
+
+
+------ C/C++ interface
+There are not very many users who write higher level software on C/C++ to deal with PrintEngine.
+Most of the clients nowadays use C#, and Meteor C# API is easier to use.
+
+Nevertheless, PrintEngine provides these API calls for basic dealing with PE-Parameters:
+
+
+/* Setting PE-parameter */
+eRET PiSetParamEx(uint32 aPEAddr, uint32 aParamId, uint64 aParamVal);
+
+/* Getting PE-parameter */
+eRET PiGetParamEx(uint32 aPEAddr, uint32 aParamId, uint64* apParamVal);
+
+
+These functions deal with following parameters:
+
+    * uint32 aPEAddr    User-format PE Address, packed in a single 32-bit uint value
+    * uint32 aParamId   PE-Parameter Id value, CPEX_****, see "PEParametersPublic.h"
+    * uint64 apParamVal Parameter value, fixed point, packed into 64-bit uint value
+
+
+A bit of elaboration:
+
+---
+uint32 aPEAddr should contain  User-format PE Address, packed in a single 32-bit uint value.
+   
+     "User-format" here means that PCC/HDC/Head/JA indices are: 
+        PCC  index: [1..255], see "MAX_PCCS" from "Meteor.h"
+        HDC  index: [1..8],   see "MAX_HDCS_PER_PCC" from "Meteor.h"
+        Head index: [1..8],   see "MAX_NOZZLE_ROWS_PER_HDC" from "Meteor.h"
+        JA   index: [1..16],  see "MAX_JAS_PER_HEAD" from "Meteor.h"
+    
+    Index 0 means "ANY", as described in previous chapters.
+
+    -- fields packing:    
+    PCC  index:    bits 31..24
+    HDC  index:    bits 23..16
+    Head index:    bits 15..8
+    JA   index:    bits 7..0
+
+    It is possible to invent a simple helper function that converts indices to the packed PE-address, 
+    something like this (note that there is no errors check and processing):
+
+    /**  Make user-format PE address in a packed form */
+    inline uint32 MakeRawUsrPEAddr(uint32 aPccNum = 0, uint32 aHdcNum = 0, uint32 aHeadNum = 0, uint32 aJaNum = 0) 
+    {
+        return (((aPccNum  & 0xFF) << 24) ||
+                ((aHdcNum  & 0xFF) << 16) ||
+                ((aHeadNum & 0xFF) << 8)  ||
+                ((aJaNum   & 0xFF) << 0));        
+    }
+
+---
+uint64 apParamVal  Contains either a simple integer value (lower 32 bits) or packed fixed-point value in general. 
+
+    The lower 32 bits are the value and the upper 32 bits (if set) are the divisor.  
+    The "value",   bits[31..0]: is a signed 32-bit value. If it is negative, it must *not* be sign extended into the upper 32 bits.
+    The "divisor", bits[32..63]: can be one of: [0,1,10,100,10000] in decimal.
+
+    For example, integer value -1 is represented as: 0x00000000FFFFFFFF
+    Fixed point value 0.1 is represented as:         0x0000000a00000001
+
+
+    To produce a fixed-point value in the format required by PrintEngine, following helper function can be used:
+    
+    /**
+        @param  aValue scaled value.
+        @param  aDiv   divisor or scaling factor. can be one of: 0,1,10,100,1000
+        @return packed value for SetParamEx() API 
+    */    
+    uint64 MakeParamVal(int32 aValue, int32 aDiv)
+    {
+        assert(aDiv == 0 || aDiv == 1 || aDiv == 10 || aDiv == 100 || aDiv == 1000);
+    
+        uint64 resVal = 0;
+    
+        //-- casting parameters to uint32 to avoid potential extension of a sign bit to higher half of resVal
+        resVal |= (uint32)aDiv;
+        resVal <<= 32; //-- move divisor to higher dword
+
+        resVal |= (uint32)aValue;
+    
+        return resVal;
+    }
+
+    --- example of parameter value and its representation:
+    uint64 val = 0;
+    val = MakeParamVal(123, 1);     //-- value '123'   is represented as: 0x000000010000007b
+    val = MakeParamVal(123, 10);    //-- value '12.3'  is represented as: 0x0000000a0000007b
+    val = MakeParamVal(123, 100);   //-- value '1.23'  is represented as: 0x000000640000007b
+    val = MakeParamVal(-123, 100);  //-- value '-1.23' is represented as: 0x00000064ffffff85
+
+
+    --- A couple of PrintEngine API functions had been introduced to make dealing with PE-Addresses and fixed point
+        values easier:
+
+
+    // Make a user-style PE-Address value from PCC:HDC:Head:Ja numbers
+    int32 CALLCONV PiMakePEAddress(int32 aPccNum, int32 aHdcNum, int32 aHeadNum, int32 aJaNum);
+    
+    
+    // Make a PE fixed-poind parameter value for PiSetParamEx
+    int64 CALLCONV PiMakePEParam(double aValue, int32 aScale);
+
+    ---
+
+
+---- A short practical example:
+
+    We have SG600 head connected to PCC:3, HDC:5, HDC drives one head.  
+    Let's set head target temperature parameter to 39.2 degrees C.
+
+    //-- PCC=3, HDC=5, head number = "All heads", JA number = "All JAs"
+    const uint32 peAddr = MakeRawUsrPEAddr(3, 5, 0, 0);
+
+    //-- 39.2 degrees, needs to be represented as  392/10
+    const uint64 peVal = MakeParamVal(392, 10)
+
+
+    eRET eRes = PiSetParamEx(peAddr, CPEX_TargetTemp, peVal);
+    if( eRes != RVAL_OK)
+    {
+        <... do error processing....>
+    }
+
+    
+When using this API it is a very good idea to process error codes correctly, because valid
+PeAddressing/Parameters set/Parameter values heavily depends on a system configuration and head types.
+
+Also, do not abuse PrintEngine by setting/reading parameters too often because it can affect PrintEngine
+performance/responsiveness. Anyway, any information that comes from the hardware (PCCs, driver boards and printheads)
+is updated about every 300ms or even less frequently.
+
+    * It might be a good idea to try first using TestApp (see TechNotes for TestApp) to play with 
+      Set/GetParamEx() API. Enable "ConfigEngine" logging category to see the results of these calls.
+        
+    * Note that a lot of parameters (like waveform file indices) can be set at any time, but applied
+      only after StartJob() command.
+
+    * Some of the parameters (not so many) may have an immediate effect. These are head-type dependant, 
+      most of them for target head temperatures / voltages  
+
+    * You really need to understand system configuration to use PiSetParamEx() correctly. Common mistake
+     can be using too exact addressing. For the temperature settign code example above:
+
+        MakeRawUsrPEAddr(3, 5, 0, 0); addresses [PCC:3, HDC:5, Head:*, JA:*], i.e. ALL JAs for ALL heads
+                                      on PCC:3, HDC:5
+
+        MakeRawUsrPEAddr(3, 5, 1, 0); addresses [PCC:3, HDC:5, Head:1, JA:*], i.e. ALL JAs for head:1
+                                      on PCC:3, HDC:5. As soon as HDC drives 1 SG600 head, it is OK 
+
+  
+
+        MakeRawUsrPEAddr(3, 5, 2, 0); addresses [PCC:3, HDC:5, Head:2, JA:*], i.e. ALL JAs for head:2
+                                      on PCC:3, HDC:5. HDC drives only 1 SG600 head, but parameter is set 
+                                      for head2, which doesn't exist.  PiSetParamEx() doesn't care about 
+                                      system hardware configuratoin, so, no errors will be logged, but 
+                                      the final functional result will be wrong.
+
+
+        MakeRawUsrPEAddr(3, 5, 1, 2); addresses [PCC:3, HDC:5, Head:1, JA:2], i.e.  JA:2 for head:1
+                                      on PCC:3, HDC:5. It may look Ok and won't generate an error, but
+                                      for SG600 "TargetTemperaure" is applicable for the WHOLE head, so, 
+                                      JA index should be 0. Otherwise the parameter value may not be picked up by 
+                                      SG600 specific code in PrintEngine 
+
+
+
+------ C# interface
+Is prety well described in  "PrinterInterfaceCLS.cs"
+
+
+
+
+
+
+
+
+
+
+
+
+

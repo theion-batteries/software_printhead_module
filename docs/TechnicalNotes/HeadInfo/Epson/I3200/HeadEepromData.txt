@@ -1,0 +1,45 @@
+=================================================================================================
+    Some information regarding  Epson I3200 head EEPROM data
+=================================================================================================
+
+First of all, there is some generic information regarding getting head EEPROM data: \TechnicalNotes\TestApp\Head_EEPROM.txt 
+
+Head EEPROM data contains the same information that can be found on the head label:
+
+    * head serial number
+    * a number of hex codes that describe recommended head ASIC voltages. These codes and voltages corresponding 
+      to them can be found in Epson documentation. Meteor decodes these voltages for user convenience.
+
+An example of one of our head EEPROM data:
+
+
+{
+  "#HeadType" : "HT_EPSON_I3200",
+  "#InfoType" : "Head EEPROM Data",
+  "01-02-01-00" :       # address: PCC:1,HDC:2,Head:1, JA doesn't matter
+  {
+    "#DataValid" : true,
+    "HeadInkType" : "A1 (Aqueous Ink)",     # shows "head ink type" Aqueous/UV/EcoSolvent
+    "SerialNumber" : "C072466B0338HH217VK",
+    "VhN1RT" : "0x44",
+    "VhN1RT_AB" : "0x3b",       # VhN1RT_AB voltage the same as on QR code.
+    "VhN1RT_AB_V" : "20.80",    # VhN1RT_AB voltage, decoded
+    "VhN1RT_CD" : "0x36",
+    "VhN1RT_CD_V" : "20.30",
+    "VhN1RT_EF" : "0x3c",
+    "VhN1RT_EF_V" : "20.90",
+    "VhN1RT_GH" : "0x3f",
+    "VhN1RT_GH_V" : "21.20",
+    "VhN1RT_V" : "21.70",
+    "VhSRT" : "0x2f",
+    "VhSRT_V" : "19.60"
+  }
+}
+
+
+Regarding using/applying those voltage values: please look at "Voltages_Temperatures.txt"
+
+
+
+
+

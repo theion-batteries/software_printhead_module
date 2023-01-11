@@ -1,0 +1,94 @@
+=================================================================================================
+    Some information about "Nozzle adjust" feature for KY1200RM  head type.
+=================================================================================================
+
+KY1200RM head supports quite unusual feature that allows assigning "palette" _each_ physical nozzle within the 
+head (and there are 5352 of them).
+
+This head uses 12 waveforms: WF0..WF11.  WF0 is used for GL0, WF1..WF7 used for GL1..GL7, WF11 used 
+for "meniscus activation" or tickling and so on.
+
+The default palette set up for all nozzled on head power on is as follows:
+
+    
+               +-- nibble7, WF index for GL7
+               |
+               |      +-- nibble0, WF index for GL0
+               |      |
+               v      v
+    0xFEDC-BA9876543210 
+      ^^^^ |          |
+       |   |          +-WF0
+       |   +--WF11
+  Not Used
+
+Palette entry is represented by 16 nibbles, 4 bits each. Nibble index [0..15] is a grey level (GL value) and the 
+nibble value [0...11] is a WF index used for the given GL data.
+GL values 12..15 (0x0C..0x0F) are not used.
+
+It is possible to override palette entries for the individual nozzles within the head to hide missing nozzles, 
+for example. The details of how adjacent nozzles should be adjusted to compensate a missing one is not in 
+the scope of this document.
+
+So, the head has 5116 _printing_  physical nozzles that comprise a print swath. The positions of these nozzles 
+(X-posintion in Kyocera terms or Y-position in Meteor terms) are [0..5115] 
+
+!! Note, that we are using nozzle position within the _head_, according to the Kyocera head specs, not position within
+Meteor colour plane. It this case nozzle adjust data isn't changed when you rotate the head.
+
+Each nozzle can be assigned a palette entry that overrides the default one.
+
+This can be done by using "NozzleAdjust" or "FlagData" file that contains a list of records: 
+    (nozzle index) -> (palette entry). 
+See "NozzleAdj_Sample.txt" for example.
+
+This file is processed similarly to the way WF files: 
+
+    * a number of "NozzleAdjust" files can be sepecified in a Meteor config file, [KY1200RM] section
+
+    * "NozzleAdjust" or "FlagData" file index can be assigned to the individual head. Default value of this 
+      index is 0, which means "not used"  
+
+    * If configured in, this file is parsed and data are sent to the head on power up or StartJob() event.
+
+    An example of config file entries:     
+
+    [KY1200RM]
+    FlagDataFile1 = "Waveform\Kyocera\KY1200RM\NozzleAdj_Sample.txt" ;-- "NozzleAdjust" data file 
+
+    [HeadDriver1]
+    FlagDataFileIdx = 1;-- use data from "FlagDataFile1" for the head on PDC1
+
+
+--- Nozzle adjust file format.    
+
+It is pretty straightforward (see "NozzleAdj_Sample.txt" file).
+The nozzle adjust records are located in [NozzleAdjustData] section in a format:
+
+    NzXXX = PaletteEntry.
+
+Where 'XXX' is a nozzle index or "X-position" (in Kyocera terms) within the head. The range is [0..5115]
+'PaletteEntry' is a 64-bit hex. value; it  must start with '0x' prefix and contain exactly 16 hex digits (nibbles)
+For example: 
+
+    Nz0 = 0xFEDCBA9876543240 ;-- Nozzle index=0, GL1 mapped to WF4 (not to default WF1)
+
+
+--- debugging.
+
+Enabling following logging categories: "Waveforms|WaveformData" will produce some detalied logging that can be 
+useful for debugging, an example of log:
+
+    Opening NozzleAdjust file for[PCC:1,HDC:1]:'C:\MeteorRepos\main\Software\Installer\Config\Waveform\Kyocera\KY1200RM\NozzleAdj_Sample.txt'
+    --- ignored Cfg file sections: ---
+    [NozzleAdjustData]
+    ----- NozzleAdjust data for[PCC:1,HDC:1] ------ 
+    Nz1 = 0xfedcba9876543240
+    Nz770 = 0xfedcba9876543210
+    ----- 
+ 
+
+
+
+
+

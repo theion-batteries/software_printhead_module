@@ -1,0 +1,30 @@
+
+=================================================================================================
+    
+Some information on HDC-SG600 high voltage input voltage monitoring
+
+=================================================================================================
+
+For proper print head operation HDC-SG600 requires a high-voltage input, it is usually 150V DC.
+If this voltage is not in a given valid range, then printing will not be possible.
+
+If configured, PrintEngine will monitor and check if HDC input voltage is within a valid range [110, 155] Volts
+and raise HDC alarm on HDC input voltage failure (out of this range).
+
+This feature is turned off by default. To configure it in, following key needs to be placed in 
+Meteor config file:
+
+    [SG600]
+    EnableHdcVMon = 1 ;-- non-zero value enables HDC-SG600 input voltage monitoring. Default value is 0
+
+
+If monitoring is enabled and HDC VIn failure is detected, then PrintEngine log will contain 
+error messages like those:
+
+    *** [PCC:1,HDC:4] Status Alarm(5): HDC VIn failure
+
+
+
+
+
+

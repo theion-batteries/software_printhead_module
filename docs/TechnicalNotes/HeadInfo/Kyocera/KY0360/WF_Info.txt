@@ -1,0 +1,233 @@
+=================================================================================================
+Some information regarding Kyocera KY0360 waveforms / voltages   
+=================================================================================================
+
+We currentlty assume that:
+
+    * KY0360 head has 2 "halves" or "Jetting Assemblies" (JAs). Modules A & B in datasheet terminology
+    * Every JA has 3 ASICs, thus 3 voltages. Total 6 voltages per whole head.
+        
+        
+
+--- Waveforms configuration:
+
+    First of all, heads come with waveforms stored in their EEPROM. So, in the simplest case nothing needs to
+    be done in terms of WF configuration.
+
+    If it is required to specify WF that is different from one stored in head's EEPROM, then Meteor config file
+    shoud contain following information:
+    
+    * Path to the waveform file(s) in  [KY0360] section (upto 40 files in total) E.g:
+        [KY0360]
+        Waveform1 = "Waveform\KY0360\KY0360_SampleWF.txt"  ; sample waveform file 
+        Waveform2 = "Waveform\KY0360\SomeOtherWaveform.txt" 
+        
+    * Index of the WF file to be used for the given head. Index value is [0..100].
+      Default index value 0 has a special meaning: "use WF from the head EEPROM", don't use WF file.  
+      Index values [1..100] correspond to    Waveform1..Waveform100 file name keys.
+      E.g:      
+
+        [DefaultParameterValues]
+        WaveformFileIdx = 0 ;Global default value, "0" means using WF stored in the head EEPROM
+     
+        [HeadDriver1:1]
+        WaveformFileIdx = 1  ; WF file index for HDC1:Head1
+        
+      In this example whole system will use WF file index 0 apart from a head on PCC1:HDC1 that will use 
+      WF file with index 1.
+      It is also possible to specify a list if 8  "WaveformFileIdx" values in  [ControllerX] section, in this 
+      case every value of the list will apply to PCC number 'X' HDCs 1..8.
+
+    Thus, if WF file index is 0 then no attempts to write any data to head EEPROM will be taken.        
+    Otherwise, WF data from the file will be loaded and on head power-up compared with head's EEPROM contents.
+    If WF data in the head EEPROM is different from WF file contents, then WF file data will be written to head EEPROM.
+
+    In order to prevent bricking the heads by writting incorrect WF data to head EEPROM it is possible to 
+    save WF data from ALL heads in the system. It can be done by specifying "SaveWaveformData" flag in [KY0360] section.
+
+        [KY0360]
+        SaveWaveformData = 1
+
+    In this case on system power-up WF information from ALL heads will be written to files that are compatible with
+    waveform files used by Kyocera heads. Waveforms are saved into the directory that is specified by optional parameter
+    
+        [Test]
+        PccUploadLogsPath = "PCC_DownloadedLogs" ; default value
+
+    Its default value is \Config\PCC_DownloadedLogs
+
+
+    File names will have following pattern: "KY0360_Waveform[Pcc1_Hdc4].txt" and have some sort of comment inside.
+    "[Pcc1_Hdc4]" here describes "head address" i.e. this is the head on PCC1:HDC4.
+    Note that all these files will be created/written on every system power up, so, it might be advisable not to 
+    abuse this functionality.
+
+
+--- notes on WF file format.
+
+
+    In general, WF for this head type is made of 224 bytes. WF file contains a decimal(!) dump of those bytes.
+    Data values can be separated by commas, spaces, tabs and new lines.
+    Every single value on a new line is also acceptable. 
+    Meteor also supports comments in this file, commented out lines start with ";". 
+    Blank lines are ignored.
+
+    1. "Legacy" file format. This is an old format and contains just optional comments and a dump of 
+        224 bytes of WF data. There is a problem that some other Kyocera heads' waveforms can be made of
+        the same amount of bytes. And by mistake can be cuccessflly loaded into the head with unpredictable
+        consequences.
+        
+    2. "new" file format. All waveforms downloaded from the head EEPROM will be saved in this format from now on.
+        This file format (standard Meteor *.ini file) contains head type, file format version and the WF data itself.
+        It should be much more difficult to do something wrong with it.
+
+        An example of such file contents:
+
+            ;-- Waveform data dump for the head type:KY0360 at [PCC:1,HDC:4] made on 2021-08-27.14:24:29
+            ;-- head S/N:000000-00
+            [Generic]
+            HeadType=KY0360
+            Version=1
+
+            [WaveformData]
+            ;-- This dump must contain exactly 224 bytes of data.
+            10,80,34,34,.....
+            40,114,80,80,......
+
+    Compatibility notes: Meteor still will load "Legacy" file format. If loading WF in "legacy"format fails, 
+    it will try to use "new" file format. Thus, WF formats backwards compatibility is preserved.
+
+
+
+--- Head voltages configuration:
+
+    As mentioned above, each JA is driven by 3 ASICs: ASIC1..ASIC3. 
+    In a config file there are corresponding parameters: VDD2_1, VDD2_2, VDD2_3 that specify
+    voltages for these ASICs on every head JA.
+
+    By default all voltages are set to 22.0 volts. Min. voltage is 20.0v and Max. value is 28.0v.
+
+
+    Configuration example:
+
+    [DefaultParameterValues]
+    ;-- this will be VDD2_1..VDD2_3 for all heads in the system 
+    ;-- and JA1,JA2 on every head will have the same VDD2_1..VDD2_3
+    VDD2_1 = 22.0 
+    VDD2_2 = 22.1
+    VDD2_3 = 22.2
+    
+
+    [HeadDriver1:1]
+    VDD2_1 = 21.8 ;-- PCC1:Head1 JA1&JA2 will have this specific VDD2_1 
+
+
+    [Head1:1]
+    VDD2_3 = 22.7, 22.9 ;-- 2 values for JA1 and JA2 respectively. So, PCC1:Head1:JA1 VDD2_3=22.7v, and PCC1:Head1:JA2 VDD2_3=22.9v
+
+
+    It is also possible to use KPEX_VDD2_1, KPEX_VDD2_2, KPEX_VDD2_3 parameters set via SetParamEx() API
+    to control mentioned above ASIC voltages.
+
+
+--- Head overtemperature limit.
+    It can be set in the config file by "HeadTemperatureUpperLimit" key, which can be placed into [DefaultParameterValues], 
+    [ControllerX], [HeadDriverX:Y] sections.
+    This parameter specifies temperature limit in degrees C (def. value is 110 degrees). If head driver chip temperature
+    exceeds this limit, the head will be shut down to prevent thermal damage.
+    
+    This parameter can also be set/read as "KPEX_TemperatureUpperLimit"  via SetParamEx()/GetParamEx() API.  
+
+
+--- Palette notes:
+
+    Palette allows remapping source greyscale values[0..7], 3BPP to 4-bit head data that is actually printed.
+    Default mapping is 1:1, i.e GSLevel0->0, GSlevel1->1 ... GSlevel7->7.
+    It is posssible to change this mapping by modifying KPEX_PltRegVal parameter from the config file or 
+    via SetParamEx() API.
+    The default value of this parameter is 0x76543210, which gives 1:1 mapping as described above (unsupported values ignored).
+    Config file parameter name is "PltRegVal" and it can be used in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+    sections. 
+    
+    Parameter in [DefaultParameterValues] defines value for WHOLE system.
+    Parameters in [ControllerX] section allow overrinding value for every HDC on a PCC:X. It is required to specify 
+    a list of 8 values, each one for individual HDC.
+    Parameter in  [HeadDriverX:Y] section sets the value for particular head on PCC:X, HDC:Y
+
+
+    An example: 2BPP mode using FIRE1, FIRE3, FIRE4 (see Kyocera documentation)
+
+        [HeadDriver1:1]
+
+        PltRegVal = 0x00004310
+        ;             |.. ||||   
+        ;             |   |||+-- value for GSLevel 0    (nibble 0)
+        ;             |   ||+--- value for GSLevel 1    (nibble 1)
+        ;             |   |+---- value for GSLevel 2
+        ;             |   +----- value for GSLevel 3     ....                           
+        ;             |  ......
+        ;             +--------- value for GSLevel 7    (nibble 7)                            
+
+        -- Note on "PltRegVal" format: This parameter (palette) is represented by a single 32-bit value. This value in turn 
+        is made of 8 "nibbles" 4 bits each (see the drawing above). Thus, each nibble specifies the print data value.
+        A nibble is made of 4 bits and Meteor in general suppports true 4 BPP, so, in theory, it is possible to use
+        value 0x0-0xF in hex or 0..15 in decimal as a palette entry. But as soon as this head supports only 3 BPP maximum, 
+        meaningful values are [0..7] only. Using values greater than 7 is not recommended.         
+        
+        This explains why in the config file palette is defined as a 32-bit hexadecimal number (starting with prefix '0x'). 
+
+--- Specifying Spit and Tickle grey level values
+
+It is possible set up custom grey level values for spitting and ticklig with the help of following parameters:
+
+name:SpitGreyLevel,   id:KPEX_SpitGreyLevel,   valid range:[0..0xF],  def:0x0F, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+name:TickleGreyLevel, id:KPEX_TickleGreyLevel, valid range:[0..0xF],  def:0x00, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+If these parameters are not specified, the system uses Spit grey level 0x0F (max. available) and Tickle grey level 0x00 (min. available).
+The user can override Spit and Tickle grey levels is required. 
+The head can be set up to use 1,2 or 4 BPP (which is actually 3BPP, see notes above about palette). 
+So, the valid grey level values are [0...7] and any of the valid grey values can set to be used for Tickling an Spitting.
+
+Config file example:
+    
+    [DefaultParameterValues] ; system global defaults
+    ;SpitGreyLevel   = 0x0F  ; global default value, meaning "not set, use Meteor default"
+    ;TickleGreyLevel = 0x00  ; global default value 
+
+
+    [HeadDriver1:1]         ; settings specific to the head on PCC:1, HDC:1 
+    SpitGreyLevel   = 7     ; use GL value 7 for spitting
+    TickleGreyLevel = 0     ; use GL value 0 for tickling
+    
+It is possible to check the concrete values in PrintEngine log, it should contain line like as follows:
+    
+    10:31:23.762 [PCC:1,HDC:4]  SpitGL:0x07, TickleGL:0x00
+
+
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages, temperatures are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+-- Head voltages (10 times scaled):
+
+    TAppHeadStatus::Voltages[0] -> Vdd2_A1
+    TAppHeadStatus::Voltages[1] -> Vdd2_A2
+    TAppHeadStatus::Voltages[2] -> Vdd2_A3
+    TAppHeadStatus::Voltages[3] -> Vdd2_B1
+    TAppHeadStatus::Voltages[4] -> Vdd2_B2
+    TAppHeadStatus::Voltages[5] -> Vdd2_B3
+
+-- Head driver card PSU temperatures(10 times scaled):
+
+    TAppHeadStatus::Temperature1 -> HDC PSU1 temperature
+    TAppHeadStatus::Temperature2 -> HDC PSU2 temperature
+    

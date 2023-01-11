@@ -1,0 +1,91 @@
+=================================================================================================
+    Some information on Meteor "Tickling" and "Spitting" functionality.
+=================================================================================================
+
+
+---- Tickling.
+This term describes the case when print head uses a special waveform/part of the waveform in order to agitate
+ink in nozzles without actually jetting ink. 
+
+Meteor supports two tickling modes that are inependent and can be used in any combination:
+
+    * "Idle tickling"
+
+        If configured, this mode turns on when there are no encoder pulses for about 200 milliseconds, 
+        i.e. when print head is idle. In this mode a special "tickling" waveform is run with the frequency 
+        specified in the config file.
+        When encoder pulses are detected, then this mode is switched off and working waveform will be used 
+        for printing.
+
+        In order to enable this mode, Meteor config file should have following settings:
+
+        ---
+
+        [System]   ; settings for the whole system, i.e. ALL PCCs 
+        Tickle = 1 ; Set to 1 to enable tickle.  Can also be set in [ControllerX] sections
+        TickleFreqHz = 8000  ; Spit and tickle frequency
+
+        [Controller7]  ; settings for PCC7       
+        Tickle = 0 ; Disable tickling on PCC7
+
+        ---
+
+        Many head types support separate "tickling" waveform files, that are selected from the waveform 
+        files list by parameter: "TickleWaveformFileIdx = ...". See "DefaultSamba_PccE.cfg" file for example.
+
+        For quick tests these settings can be changed in TestApp->"Advanced" tab.
+
+        User application can also use following signals to control this mode:
+
+            SIG_SET_TICKLE_FREQ
+            SIG_ENABLETICKLE
+
+        You can also check "Params_Signals.txt" tech. note on how to send those signals from TestApp if 
+        you want a quick experiment.        
+
+
+    * "Tickling while printing"
+
+
+        This mode works while normal printing, i.e. when encoder generates pulses. Usually print data with 
+        grey level 0 ("white data") doesn't generate any ink jetting, but GL0 data is sent to the print head 
+        anyway for blank areas in the image. So, it is possible to develop working waveform that has special
+        "tickling pulse" assigned to GL0, not powerful enough to generate jetting, but good enough to agitate ink.
+
+        This heavily depends on a head type, waveforms for some print heads (e.g Kyocera) already have 
+        tickling pulses assigned to GL0, some heads allow editing waveforms and creating any functionality 
+        you want.             
+
+
+    --- Notes on tickling/spitting frequency
+    Absolute min/max values of tickling/spitting frequency are:
+        min: 82Hz, max: 100KHz. Default frequency is 8000Hz
+    Note that min/max values are limited by FPGA, whether some conctere print head supports such frequency is 
+    another question.    
+    
+        
+
+---- Spitting.
+
+    In this mode print head fires every nozzle given amount of times using spitting frequency (see TickleFreqHz).
+    For spitting Meteor sends print data with the max. grey level to the head.
+
+    For quick tests spitting can be done by using TestApp->"Advanced" tab.
+    User application can also use signal SIG_SPIT to control spitting.
+
+    Note: when spitting by default print data sent to ALL heads on HDC and all head "Modules" or "jetting assemblies".
+    In most of the cases it is enough. But it is possible to disable sending print data (including spitting) to 
+    a particular print head on HDC or even part of the head. This can be done by sending SIG_FORCEWHITE.
+    But this functionality is very head-type specific, please refer to the concrete head tech. notes.
+
+    Also, some print head types implement "spitting when prinitg" or "PageSpit". In this mode head can do a number 
+    of small spits even when printing real images. This is quite specific feature and it is implemented mostly for 
+    Ricoh Gen5 series.
+    
+    
+    
+
+
+
+
+

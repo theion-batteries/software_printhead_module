@@ -1,0 +1,45 @@
+
+=================================================================================================
+    Getting static KY1200_MD head information
+=================================================================================================
+
+Static information, like head serial number etc. is published as EEPROM data
+and can be obtainned in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+ 
+an example of the JSON output from TestApp:
+ 
+
+Head "EEPROM" contents
+
+{
+   "#HeadType" : "HT_KY1200_MD",
+   "#InfoType" : "Head EEPROM Data",
+   "00:00:00:00" : {
+      "#DataValid" : true,
+      "DriveNumber" : "920928924", // this is, basically, "Number of nozzles fires", read by 0x02 command
+      "SerialNumber" : "20011701",
+      "VAdj" : "0.0",
+      "VDrv1_1" : "24.0",
+      "VDrv1_2" : "24.0",
+      "VDrv1_3" : "24.0",
+      "VDrv1_4" : "24.0",
+      "VDrv1_5" : "24.0",
+      "VDrv2_1" : "24.0",
+      "VDrv2_2" : "24.0",
+      "VDrv2_3" : "24.0",
+      "VDrv2_4" : "24.0",
+      "VDrv2_5" : "24.0"
+   }
+}
+
+Please note that any settings (voltages, waveforms etc.) changed in the head by user are PERSISTENT, i.e.
+they are written into the head EEPROM and stay there.
+So, it is a good idea in general to collect EEPROM data and save current waveform/delays into a file (see "WF_Info.txt")
+before making any changes to head's settings.
+
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt

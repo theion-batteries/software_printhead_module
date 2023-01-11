@@ -1,0 +1,74 @@
+=================================================================================================
+    
+Some information on reading and setting control signals for DataLase96 head.
+
+=================================================================================================
+
+--- reading signals value bits
+
+It is possible to read some status signals out of the DataLase HDC.
+These signals are mapped to THeadStatus::bmStatusBits as follows:
+
+    Bit 3   - WaterFlow Alarm
+    Bit 4   - Temperature Alarm
+    Bit 5   - Psu On Alarm
+    Bit 6   - Ready
+    Bit 7   - Interlock
+    Bit 12  - Enable
+    Bit 13  - Chiller
+    Bit 14  - KeySw
+    Bit 15  - Extractor
+
+These signal bits can be observed in "Monitor" program, "Status" tab, HDC/Head "Status Bits" fields.
+Note that this 32-bit field can also contain other system flags, like BMHS_CFGEND (bit31). See BMHS_* constants.
+
+User application can obtain  THeadStatus::bmStatusBits value as a part of TAppHeadStatus structure via 
+PiGetHeadStatus() or PiGetStatusEx() API.
+
+
+--- setting control signals
+
+Following control signal bits defined and user application can set/reset them.
+
+    Bit 0 : Stop
+    Bit 1 : BoardRdy 
+    Bit 2 : alarmReset
+    Bit 3 : print
+    Bit 4 : psuEn
+    Bit 5 : Standby
+
+This can be done by sending SIG_DLASE_CTRL signal to the specified PCC/HDC via PiSetSignal() API.
+Parameters description:
+    SigId: byte0: SIG_DLASE_CTRL (0x29), byte1: HDC number[1..8], byte2: PCC number[1..254], byte3:0
+    State: byte0:       bit values (see bits definition above)
+           bytes3..1:   must be 0
+
+If some parameters are incorrect, then the signal is ignored and error message logged.
+
+The signal value word is automatically read and displayed in "Monitor" program, "Status" tab, HDC/Head "Status Bits2" fields.
+User application can obtain  THeadStatus::bmStatusBits2 value as a part of TAppHeadStatus structure via 
+PiGetHeadStatus() or PiGetStatusEx() API.
+
+
+
+
+For testing purposes this signal can be sent by "Meteor TestApp" as follows:
+    - turn HDC power ON (e.g. from Monitor program/"Status" tab
+    - connect "TestApp" to the PrintEngine
+    - go to "Scratch" tab and find "PiSetSignal" box
+    - in "Id" field enter [Jetting Assembly:PCC:HDC:Signal] fields (in hex!). E.g. for PCC1, Hdc4 and SIG_DLASE_CTRL (0x29)
+        it should look like: "00:01:04:29"
+    - in "Val" field enter the value (in decimal!) for example: 
+        0   - will write all signals as '0'
+        16  - will set bit4 "psuEn"
+        48  - will set bits4,5 
+
+
+    It is also a good idea to watch to the PrintEngine log to spot potential parameters errors and what is 
+    being set.
+
+    Log messages should look like:
+    14:38:05.090 SetSignal: SIG_DLASE_CTRL (41) pcc:1 hnum:1 xaddr:0 state:0x0000000a
+    14:38:05.090 SIG_DLASE_CTRL[00:00:ff:ff] Data:0xa
+
+

@@ -1,0 +1,157 @@
+=================================================================================================
+    
+Some information on the waveform files format V2 for Konica Minolta KM1800i and KM1024i family heads
+
+=================================================================================================
+
+
+According to the heads specs, standard waveform should look as follows:
+This is the standard default waveform format and it is well described in "WF_Info.txt" file.
+
+
+      <-T2->                           <-T2->
+      +----+                           +----+
+      |    |                           |    |
+ VH2  |    |                           |    |
+      |    |                           |    |
+     -+    +---------------------------+    +---
+      .  -->Td<--                      .
+      .       +----------+             .    +----
+ VH1  .       |<-- T1 -->|<-- THold -->.    |
+      .       |          |             .    |
+     ---------+          +------------------+
+      .                                .
+      .<---     waveform pulse     --->.
+
+Figure1. Standard WF pulse shape.
+   
+    This sort of "standard" pulse is made of the following states:
+        - VH2 with the T2 duration
+        - delay between VH2 and VH1 with Td duration 
+        - VH1 with the T1 duration    
+        - VH1 and VH2 Off state with THold duration
+
+
+---------
+
+But is turns out that for some rare cases this simple waveform shape is not enough. And it is also
+possible to use special WF, where every pulse can have several VH1/VH2 transitions. 
+
+Some examples of such waveforms:
+
+
+
+      <-T2.1->            <-T2.2->
+      +------+            +------+             .
+      |      |            |      |<-- THold -->.
+ VH2  |      |            |      |             .     
+      |      |            |      |             .     
+     -+      +------------+      +-------------.      
+      .   -->Td<--    -->Td<--                 .   
+      .       +----------+                     .  
+ VH1  .       |<-  T1  ->|                     .
+      .       |          |                     .
+     ---------+          +------------------------------
+      .                                        .
+      .<---        waveform pulse          --->.
+              
+
+Figure2. Waveform pulse has two VH2 sub-pulses
+
+    This sort of pulse is made of the following states:
+        - VH2 with the T2.1 duration
+        - delay between VH2 and VH1 with Td duration 
+        - VH1 with the T1 duration    
+        - VH2 with the T2.2 duration
+        - VH1 and VH2 Off state with THold duration
+
+
+
+---------
+
+
+      <-T2.1->                        
+      +------+                                              .
+      |      |                                              .
+ VH2  |      |                                              .
+      |      |                                              .
+     -+      +----------------------------------------------.-
+      .   -->Td1<--                                         . 
+      .         +----------+       +----------+<-- THold -->.                   
+ VH1  .         |<- T1.1 ->|<-Td2->|<- T1.2 ->|             .                 
+      .         |          |       |          |             .       
+     -----------+          +-------+          +------------------------
+      .                                                     .
+      .<---            waveform pulse                   --->.
+                                             
+
+Figure3. Waveform pulse has two VH1 sub-pulses
+
+    This sort of pulse is made of the following states:
+        - VH2 with the T2.1 duration
+        - delay between VH2 and VH1 with Td1 duration 
+        - VH1 with the T1.1 duration    
+        - Off with Td2 duration 
+        - VH1 with the T1.2 duration
+        - VH1 and VH2 Off state with THold duration
+
+
+
+---------
+
+
+Such waveform shapes can not be described by WF files with the default version 1. 
+So, if you want to use such extended waveform  functionality, you must use WF files format version 2, as follows:
+
+    [generic]
+    HeadType= KM1800I ; head type
+    Version = 2 ; <---- This specifies WF file format Version 2  
+
+
+Then there should be 1 to 7 sections that describe WF pulses: [Pulse0]...[Pulse6]. Pulse numbers 0..6 should be 
+sequential. I.e. the sequence [Pulse0] [Pulse1] [Pulse3] is not allowed.
+
+Each [PulseX] section should contain one key "States" which describes a number of WF states. For example:
+
+    [Pulse0]
+    States = VH2_2.7, VHOff_0.25, VH1_4.7, VHOff_1.1 
+
+WF state is described as <State>_<duration is us>, where <State> is one of these: 
+    VH2     - specifies VH2 pulse
+    VH1     - specifies VH1 pulse
+    VHOff   - VH1 and VH2 are off
+
+It is possible to have 1-16 states in one pulse.
+
+
+-- For example, pulse on Figure1 can be specified as follows:
+
+    [Pulse0]
+    States = VH2_2.7, VHOff_0.25, VH1_4.7, VHOff_1.1 
+
+
+-- pulse on Figure2 can be specified as follows:
+
+    [Pulse1]
+    States = VH2_2.7, VHOff_0.25, VH1_1.7, VHOff_0.2, VH2_1.5, VHOff_1.1 
+
+-- pulse on Figure3 can be specified as follows:
+
+    [Pulse2]
+    States = VH2_2.7, VHOff_0.1, VH1_1.7, VHOff_0.2, VH1_2.5, VHOff_1.1 
+
+
+--------- Waveform constraints:
+
+    * Waveform time unit is 25ns, so, any timing can't be less than 0.025us
+    * Max. Value for the times currently is 65536*25ns = 1638us
+    * number of waveform states in one pulse is [1..16]
+    * total max. number of states in a whole waveform is 64
+    * there always must be VHOff state in between VH1 / VH2 states. 
+        Min. value of such delay between VH1/VH2 duration is 100ns (0.1us)
+    * WF pulse must always end with VHOff state
+
+
+The rest of the WF file V2 (OPR registers and such) is the same as in the V1 file format.
+
+

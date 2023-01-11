@@ -1,0 +1,34 @@
+=================================================================================================
+    Some information about fine row adjustments for DimatixSamba head
+=================================================================================================
+
+Samba head has 2 modules or "Jetting assembiles" (JAs): "Side A" and "Side B" according to head datasheet.
+Nozzle positions within one module are fixed. But 2 JAs withing the head have independent fire signals, so,
+it is possible to adjust JAs' positions independently of each other.
+
+
+--- internal mapping:
+    index         PEAddr      head module  TOR Nibble
+    HDC row0 -> [xx:xx:00:00]  Side A         0
+    HDC row1 -> [xx:xx:00:01]  Side B         1
+ 
+In brief: JA0 corresponds to "Side A",  JA1 corresponds to "Side B".
+
+Parameters CPEX_RowX_Adj_um and CPEX_RowX_Adj_cpix can be used to specify fine "row" or JA adjusments within the head.
+(See ConfigParameters.txt and example in DefaultSamba_PccE.cfg as well).
+
+In a Meteor config file these parameters named as "Row_X_Adj_um" and "Row_X_Adj_cpix". 
+Fine JA adjustments can be applied for each side of the head using microns or centipixels (1/100 of a pixel), but not 
+both. If both "Row_X_Adj_um" and "Row_X_Adj_cpix" parameters found, their values ignored and an error message is logged.
+Adjustment values can be both positive and negative. 
+
+These parameters are usually placed in [HeadX:Y] section. 
+In this case the value list must contain 2 values, each specifies an adjustment for a particular head module (A and B).
+In scanning mode these adjustments apply to BOTH forward and reverse passes.  
+
+Also in scanning mode following parameters can be applied:
+
+Forward scan:  FwdScan_X_Adj_cpix, FwdScan_X_Adj_um
+Reverse scan:  RevScan_X_Adj_um, RevScan_X_Adj_cpix
+
+These parameters work the same way as Row_X_Adj_um" and "Row_X_Adj_cpix.

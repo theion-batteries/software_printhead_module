@@ -1,0 +1,81 @@
+=================================================================================================
+    Some information regarding Kyocera KY1200_MD head voltages / temperatures  
+=================================================================================================
+
+
+Firsrt of all, on head power up all head original Voltages and some other settings are read and can be
+retrieved by user application as a part of "Head EEPROM data", see "HeadEepromData.txt".
+
+------------------------------------------------------------
+--- Head voltages configuration:
+
+In the simplest case no voltage parameters are specified in Meteor congig file at all.
+In this case no voltage related data is sent to the head and it uses whatever is written in its EEPROM.
+
+There are several parameters that can be used for specifying head voltages:
+
+-- "HeadVoltageAdj"
+ id:KPEX_HeadVoltageAdj, valid range:[-4.0..+4.0],  def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX]
+
+This parameter applies some "adjustment" voltage to the whole head, i.e. to every PrintUnit.
+
+-- "HeadAbsVoltage"
+ id:KPEX_HeadVoltageAbs, valid range:[22.0..26.0],  def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX], [HeadX]
+
+This parameter consists of a list of 10 values that specify "Head Print Unit" absolute drive voltage [22.0, 26.0]V 
+or "drive voltage setting" in Kyocera terms. The list items specify voltages in the following order (as in head specs):
+    V_Unit1-1, V_Unit1-2, V_Unit1-3,....V_Unit2-5
+
+Note that you need either not specify this parameter at all (values stored in the head will be used), or
+specify exactly 20 values, one per PrintUnit. 
+
+
+
+An example:
+    [Controller1]
+    HeadVoltageAdj = 0.5   ; Head V adjustment relative to factory setting (-4.0V to +4.0V)    
+    
+    [Head1]
+    ; Head PrintUnits drive voltages in order: V_Unit1-1, V_Unit1-2, V_Unit1-3,....V_Unit2-5
+    HeadAbsVoltage = 22.0, 22.1, 22.2, 22.3, 22.4, 22.5, 22.6, 22.7, 22.8, 22.9, 23.0
+
+
+------------------------------------------------------------
+--- Setting Head temperature.
+
+It can be set in the config file by 2 parameters: "HeadTemperatureUpperLimit", "HeadTemperatureLowerLimit",
+which apparently specify a range for the head target temperature in degrees C. (You can ask Kyocera why they 
+didn't use a single "target temperature" value). 
+
+These parameters can be placed into [DefaultParameterValues], [ControllerX], [HeadDriverX] config file sections.
+By default these parameters are not set, which means: "use values stored in the head EEPROM".
+You either not specify _both_ parameters at all or specify _both_ of them.
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+    TAppHeadStatus::Temperature1 -> head current (measured) temperature.
+    TAppHeadStatus::Temperature2 -> low heater temperature limit
+    TAppHeadStatus::Temperature3 -> high heater temperature limit
+
+
+    TAppHeadStatus::HeadVoltage  -> head "Voltage adjust", 10x scaled
+
+    TAppHeadStatus::Voltages[0]  ->  head1 V_Unit1-1
+    TAppHeadStatus::Voltages[1]  ->  head1 V_Unit1-2
+    ...................................
+    TAppHeadStatus::Voltages[9]  ->  Head2 V_Unit2-5
+
+
+
+

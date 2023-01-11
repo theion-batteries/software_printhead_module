@@ -1,0 +1,69 @@
+=================================================================================================
+    Some information regarding  Xaar1001/1002/1003/1006 head EEPROM data
+=================================================================================================
+
+Static information, like head serial number etc. is published as EEPROM data
+and can be obtainned in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+Also note that for some reason head SerialNumber seems to be not included into the head EEPROM.
+Specs for Xaar1001-1006 do not show "Serial Number" data in EEPROM layout.
+
+ 
+an example of the JSON output from TestApp:
+
+{
+"#HeadType" : "HT_HSS",
+"#InfoType" : "Head EEPROM Data",
+"01-01-00-00" :
+    {
+    "#DataValid" : true,
+
+    "Ptrim0" : 259,         // Ptrim0..Ptrim15 raw values
+    "Ptrim1" : 258,          
+    "Ptrim10" : 258,
+    "Ptrim11" : 257,
+    "Ptrim12" : 0,
+    "Ptrim13" : 1,
+    "Ptrim14" : 2,
+    "Ptrim15" : 2,
+    "Ptrim2" : 258,
+    "Ptrim3" : 257,
+    "Ptrim4" : 257,
+    "Ptrim5" : 257,
+    "Ptrim6" : 0,
+    "Ptrim7" : 0,
+    "Ptrim8" : 259,
+    "Ptrim9" : 259,
+
+    "Sclk1" : 240,
+    "Sclk2" : 240,
+    "Vbase1" : 0,
+    "Vbase2" : 65535,
+    "Voffset1" : 37,
+    "Voffset2" : 39,
+
+    "Volts0" : "18.00",     // Programmed ASIC[0]..ASIC[15].. voltages (0.1V units)
+    "Volts1" : "18.00",
+    "Volts10" : "18.00",
+    "Volts11" : "18.00",
+    "Volts12" : "18.00",
+    "Volts13" : "18.00",
+    "Volts14" : "18.00",
+    "Volts15" : "18.00",
+    "Volts2" : "18.00",
+    "Volts3" : "18.00",
+    "Volts4" : "18.00",
+    "Volts5" : "18.00",
+    "Volts6" : "18.00",
+    "Volts7" : "18.00",
+    "Volts8" : "18.00",
+    "Volts9" : "18.00"
+    }
+}
+
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt
+

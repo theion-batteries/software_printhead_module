@@ -1,0 +1,172 @@
+=================================================================================================
+Some information regarding Xaar100X (Xaar1001, 1002, 1003, 1006) waveforms    
+=================================================================================================
+
+We currentlty assume that:
+
+    * Xaar100X head has two "print modules" or Jetting Assemblies (JAs).
+    * WF is appplied to BOTH nozzle rows (JAs) of the head.
+    * each nozle row (JA) is handled by 8 ASICs, each one can have its own driving voltage. 
+        Thus, there are 16 voltages per whole head.
+        
+
+--- Waveforms configuration:
+
+  - use standard Xaar1001/1002/1003/1006 WF.
+
+--- Head voltages configuration:
+
+    As mentioned above, head's JA is driven by 8 ASICs: ASIC0..ASIC7.
+    
+    Each ASIC voltage is a sum of:
+    Head Initial Voltage (Vi) (one per whole head) + Head voltage Offset (VOffset) (one per nozzle row) + 
+    PTrim voltage (one per ASIC)
+    
+    "Vi"            is mapped to KPEX_HeadVoltage parameter     (21.0 V by default)
+    "VOffset"       is mapped to KPEX_HeadVoltageAdj parameter  (0.0  V by default)
+    "PTrim[0..7]"   are mapped to KPEX_VoltageTrim0...KPEX_VoltageTrim7 (0.0  V by default)
+
+    Configuration example:
+
+    [HeadDriver1:1]
+    HeadVoltage = 21.0 ;--  Vi=21.0v for head1 (HDC drives one head)
+
+    [Head1:1]
+    HeadVoltageAdj = 0.5 ;-- 1 value: VOffset for JA1, which is a whole head
+    VoltageTrim0   = 0.0, 0.2   ; 2 values: PTrim for ASIC0 on JA1..JA2 respectively
+    VoltageTrim4   = 0.3, -0.4  ; 2 values: PTrim for ASIC4 on JA1..JA2 respectively
+    VoltageTrim7   = 0.1, 0.2   ; 2 values: PTrim for ASIC7 on JA1..JA2 respectively
+                                    
+
+    ---
+    ! Note on setting KPEX_HeadVoltage parameter via SetParamEx() API:
+
+        SetParamEx() API will accept addresses specified down to concrete JA (e.g. [4:3:1:1]). 
+        In this case the KPEX_HeadVoltage parameter will be applied to JA1 on PCC:4, HDC:3, Head:1.
+        In order to set KPEX_HeadVoltage parameter for the WHOLE head, one need to provide address like: [4:3:1:0].
+        The '0' is explicitly indicating that all JAs on the head are being addressed.
+
+    ---
+    ! Note on incorrect voltages settings:
+
+    As soon as ASIC voltage (VASIC) is a sum of Vi+VOffset+PTrim voltage, it is very dificult to check that VASIC is
+    correct on early stage of reading config file. Instead, every VASIC is checked on head power up.
+    If resultant VASIC is out of range [15.0, 30.0] volts, then it is ignored and set to default 21.0 volts. 
+    It is a good idea to have correct voltages in the config file first, and only then try adjust them with SetParamEx() API.
+    An attempt to fix initially incorrect VASIC by adjusting VOffset and PTrim may not work correctly at all and will be ignored.
+
+    ---
+    ! Notes on head voltages readback: These head types are driven by HDC-HLM, which can set any of the head voltages in
+    the correct voltage range, but it can't read any real voltages back (unlike Xaar2001 HDCs). Thus, all head voltages
+    displayed in Monitor and exported to the user are "Target voltages", i.e the values that as set by the user.
+    The only way to get real voltages' values is to measure them with the multiometer.
+    Also, as soon as there is no voltages feedback, there is no way to precisely adjust them to the user-specified values. 
+    Though the voltage resolution (not precision) is quite high:
+    HDC voltage regulator uses 10-bit DAC to form all head voltages. Head max. voltage is 30.0 volts, which gives
+    30.0V / 1024 ~= 30mV voltage setting / display resolution. In other words, setting head voltage with less than 
+    30 millivolt resolution doesn't make sense. 
+
+
+
+
+--- Waveform file format notes:
+
+    WF file format looks like hex dump of data and it is Xaar1001/1002/1003/1006 specific.
+    PrintEngine supports waveform files with minor improvements:
+
+    * it is possible to have blank lines and comments starting from ';' character at the beginning of the file,
+        before data dump starts
+    
+    * all whitespaces within data dump are ignored, i.e. it is possible to have it split into multiple lines.
+        No comments within data dump.
+
+--- Palette notes:
+
+    Palette allows remapping source greyscale values[0..7], 3BPP to 4-bit head data that is actually printed.
+    Default mapping is 1:1, i.e GSLevel0->0, GSlevel1->1 ... GSlevel7->7.
+
+    Sometimes it is necessary to change the mapping (palette), e.g. to reduce GL depth or if Xaar waveform being used
+    requires inverted palette.
+    
+    Changing palette works as follows:
+    1. If palette (*.plt) file (see below) is found and contains valid palette data, this data will be used
+    2. otherwise Meteor will try to use palette data that may (or may not) be embedded into the waveform file itself.
+    3. If there is no palette data in the WF (pretty normal case), then the default palette will be used.
+
+    Thus, in the simplest scenario, palette file is not required and if palette data is present in the WF, it will be used.
+    If "Waveforms" logging category is enabled, then palette information will be placed into the PrintEngine log, e.g: 
+        
+        ....
+        Opening WF file:C:\Meteor\Config\Waveform\Xaar\Xaar100X\MyWaveform.txt
+        Extracted palette:[4,3,2,1,0,0,0,0,0,0,0,0,0,0,0,0,] from the WF
+        Using palette data extracted from the waveform
+        Using palette:[4,3,2,1,0,0,0,0,]
+        ....
+    This example demonstrates "inverted palette" extracted from the WF file.
+        
+
+--- Palette (*.plt) file notes:
+    It is an optional file that has the same name as WF file, but *.plt extension. If it is found, PrintEngine
+    will try to read data from it and load to the appropriate palette registers.
+
+    -- PLT file format:
+
+    * It is just standard PrintEngine ini file. It must contain [PaletteData] section and "HeadType" key that 
+        specifies the head type. Data payload is optional and it is a list of of comma-separated 8 decimal values. 
+        Each value should be in a range [0..15].
+        
+    For example, the default palette is:
+    Data = 0,1,2,3,4,5,6,7
+           | ......... | |
+           |           | +------- value for GSLevel 7   
+           |           +--------- value for GSLevel 6
+           |                      ...................
+           +--------------------- value for GSLevel 0
+
+
+    If for some reason the same waveform needs to be associated with different palettes, then it would be necessary to 
+    assign waveform files different names and name *.plt files accordingly.
+
+
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+
+Note that HDC-HLM doesn't have an ability to measure/read real HDC voltages. So, all voltages
+displayed by Monitor or exported to status structures are "Target" ones, i.e. whatever user set as a target.
+The only way to find out what real voltages are is to mearure them on HDC board with the multimeter, for example.
+
+
+Target values of head voltages are displayed in "Monitor" program, "Status" tab, HDC/Head status listbox.
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+-- Head voltages resolution and precision:
+    HDC voltage controller uses 10-bit DAC to form all head voltages. Head max. voltage is 30.0 volts, which gives
+    30.0V / 1024 ~= 30mV voltage setting / display resolution. In other words, setting head voltage with less than 30 millivolt
+    resolution doesn't make sense. 
+
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+-- HDC voltages:
+    TAppHeadStatus::Voltages[0]...TAppHeadStatus::Voltages[15] contain all 16 HDC voltages 
+    Each array item contains ASIC voltage in low 16 bits
+    Each 16 bit value is a positive voltage scaled 100 times, i.e. 0.01v resolution.
+    Array layout:
+        Voltages[0] -> JA1, ASIC0 voltage   
+        Voltages[1] -> JA1, ASIC1 voltage   
+        ...
+        Voltages[7] -> JA1, ASIC7 voltage       
+        
+        Voltages[8] -> JA2, ASIC0 voltage   
+        Voltages[9] -> JA2, ASIC1 voltage   
+        ...
+        Voltages[15]-> JA2, ASIC7 voltage       
+
+        
+
+
+    

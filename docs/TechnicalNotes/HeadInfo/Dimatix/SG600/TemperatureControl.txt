@@ -1,0 +1,113 @@
+=================================================================================================
+    Some information on HDC-SG600 head/Aux temperature control features.
+=================================================================================================
+
+--- head temperature control
+
+Dimatix SG600 head has a built-in 100K thermistor and a heater. In order to enable head temperature control, it is
+necessary just to specify head "target temperature" parameter in the config file:
+
+KPEX_TargetTemp, id:CPEX_TargetTemp, valid range:[0.0..50.0], def:32.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+Meteor config file example: 
+
+    [DefaultParameterValues]
+    HeadTargetTemperature = 0  ; default value:0 disables head temperature control
+
+    [HeadDriver1:4]
+    HeadTargetTemperature = 34.5 ; target temperature for head on PCC:1, HDC:4
+
+
+--- External temperature control.
+
+HDC-SG600 has a connector marked as "AUX-THM". And it is possible to connect there an external thermistor to measure
+temperature somewhere else, ink supply, for example. It is assumed that thermistor connected to the "Aux thm" 
+connector on HDC has following parameters (the same as thermistor in the head):
+    * 100K at 25 degrees C
+    * BConstant = 3428
+
+This "Aux" temperature is displayed in "Monitor" program, "Status" tab, HDC/Head status/"Aux temp".
+ 
+It is also possible to create a closed-loop temperature control for the external source, using HDC GPO1 as PWM
+output for the heater control.
+
+---
+!! Important information, read carefully !!
+
+HDC-SG600 has 4 general-purpose outputs (GPO1..GPO4) on "GPIO" connector. GPO1..GPO4 are open-drain outputs pulled up 
+to +5V supply on the same connector via 10K resistors.
+By default GPO1..GPO4 are usual outputs that can be controlled by PrintEngine API calls.
+In "inactive" default state, GPO1..GPO4 are pulled up to +5V. 
+
+For the "external" temperature conrol loop GPO1 is configured as PWM output that can drive some sort of external 
+heater, for example. The system will provide PID controlled loop: 
+
+[Thermistor connected to "AUX-THM"] -> [GPO1 PWM] -> [heater driver]->[Ext heater]
+             ^                                                            |
+             `------------------------------------------------------------'
+
+!! It is important to confugure ext. temperature control properly and check it before connecting the heater.
+!! For example: heater driver accepts +5V as "On" signal, but GPO1 is not configured as PWM output and 
+!! remains in default "pull-up" state forever. As the result the heater is always ON and can fry everything around.
+!! The same can happen if PWM polarity is set up incorrectly.   
+
+When GPO1 is configured as PWM output, it provides logical signal with [0..100%] duty cycle. PWM frequency is 20 KHz.
+As mentioned above, due to 10K pull up resitor and open-drain output, signal edges can be slopping. If required, 
+slew rate can be increased by using additional 470R pull-up resistor from GPO1 to +5V on GPIO connector. Ideally the
+heater driver can use schmitt trigger input as well.
+
+
+--- External temperature control configuration.
+
+It is done by using 2 parameters:
+    KPEX_AuxTargetTemp      external heater target temperature, very similar to KPEX_TargetTemp
+    KPEX_Heater1_IO         configures GPO1 as heater PWM output, values:
+                            0 default. temperature control is OFF, output is in "inactive state", see below
+                            1 "normal PWM". 0% duty cycle is 0V, 100% duty cycle is +5V, inactive state:0V  
+                            2 "inverted PWM". 0% duty cycle is+ 5V, 100% duty cycle is 0V, inactive state:+5V
+
+
+
+KPEX_AuxTargetTemp, id:CPEX_AuxTargetTemp, valid range:[0.0..50.0], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+KPEX_Heater1_IO,    id:CPEX_Heater1_IO, valid range:[0,2], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+    Config file example:
+
+    [HeadDriver1:4]
+    HeadTargetTemperature = 34.5 ; target temperature for head on PCC:1, HDC:4
+    AuxTargetTemperature  = 27.3 ; ext. heater temperarture for PCC:1, HDC:4
+    Heater1_IO       = 1    ; normal, non-inverted PWM
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of voltages/temperatures/other parameters are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multiplied by 10
+TAppHeadStatus::Temperature1    Head temperature 
+TAppHeadStatus::Temperature2    Amplifier1 temperature
+TAppHeadStatus::Temperature3    Amplifier2 temperature
+TAppHeadStatus::Temperature4    Amplifier3 temperature
+TAppHeadStatus::Temperature5    Aux temperature 
+
+
+-- Head voltages, multiplied by 10. 
+
+TAppHeadStatus::Voltages[0..5]  Current voltage on JA0..JA6 waveform amplifier output. 
+                                Can be used for debugging purposes, don't make much sense in working mode
+
+TAppHeadStatus::HeadVoltage     HDC Vdd voltage
+
+-- HDC current
+TAppHeadStatus::AbsHeadVoltage  HDC consumption current, mA
+
+-- Aux temperature
+HDC has "Aux thm" connector and it is possible to connect there an external thermistor to measure
+temperature somewhere else, ink supply, for example.
+

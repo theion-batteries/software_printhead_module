@@ -1,0 +1,24 @@
+=================================================================================================
+    Some information on setting up "PageSpit" feature for RG5 head
+=================================================================================================
+
+Note: This feature is available only for RG5 head, PCC-E and Cyclone4 HDC version.
+
+Using this RG5-specific feature requires two parametes in a Meteor config file:
+
+    PageSpitInterval = [0..255]   
+    PageSpitPixel    = [0..7]
+
+Default value of these parameters is 0. If any of this parameters is 0, then "PageSpit" is turned off
+These parameters can be specified downto HDC level, i.e. every HDC or head can have its own specific settings.
+So that, parameters can be placed in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y] sections
+of the config file.
+
+Note that for [ControllerX] section parameters must be represented as a list of 8 values, one per HDC.
+
+You can additionally check Meteor log for the line that should look like: (you will need to enable "Setup" log category)
+
+   "Write PageSpit [PCC:1,HDC:1] Reg:0x5c0, Value:0x8000040b"
+
+
+

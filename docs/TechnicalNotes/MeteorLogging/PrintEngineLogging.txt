@@ -1,0 +1,160 @@
+=================================================================================================
+    Some information about Meteor PrintEngine logging
+=================================================================================================
+
+Logging PrintEngine events and parameters is really important, because it allows capturing the picture of 
+what was and is going on and helps greatly with support and debugging various issues.
+The user can deal with several logs: log in Monitor program ("debug" tab), logs stored in log files, 
+errors only logs (e.g. TestApp) and so on.
+
+There is a huge amount of various information that can be logged, but logging too much can slow down PrintEngine
+and hide really important things. So, there is a mechanism that allows selecting only required parts of PrintEngine
+events to be logged.
+
+-------------------------------------
+--- Selecting things to be logged.
+It is done by specifying "Log Modules" or "Log categogies" in Meteor config file.
+LogModules are listed in [Test] section as strings separated by '|' character, like:
+
+    [Test]    
+    LogModules = "Setup|Commands" ; enable 'Setup' and 'Commands' logging categories
+
+
+To "Add" or "Turn On" some specific logging category it is necessary simply add its name to the list (with a separator),
+like that:
+"LogModules = "Setup|Commands|Waveforms" ;-- added "Waveforms" logging category
+
+
+This can also be achieved by ticking appropriate box in Monitor, "Setup" tab.
+
+
+
+--- some logging categories explained
+
+There is a number of logging categories, some of them are useful only for debugging and shouldn't be
+enabled in a normal working scenario.
+Here is the list of the most useful logging categories:
+
+ "Setup"        enables logging system set up information, like writing to FPGA registers etc. Enabled by default.
+
+ "Commands"     enables logging print commands. Enabled by default. Has the same effect as "LogCommands = 1" in [Test].
+
+ "Waveforms"    logging WF-related information, like waveform files being opened, some warnings etc.
+
+ "WaveformData" logging low level WF information and WF binary data being sent to PCC/HDC.
+                It is used only for debugging purposes and shouldn't be used in a production mode. 
+                This logging can create quite large amounts of log data, dumps etc. 
+                And this type of logging is blocking, so, it can affect PrintEngine performance.
+
+ "ConfigEngine" Logging ConfigEngine events, like PiSetParamEx(), PiGetParamEx() API calls, etc.
+                Very useful for debugging, but can produce large amount of logging.
+
+
+
+ "LogEepromData"  logs head EEPROM related messages. Useful for debugging, but in reality PiGetEepromData() API 
+                  is all you need  
+
+ "LogRawEeprom" Enables logging raw EEPROM dump, for development/debuggign mostly
+                 
+ "Flash"        Logs FLASH-media (CF, SD-cards) related events, mostly for debugging
+
+
+ "LogSegments"          log memory segments related information
+ "LogImgBufAllocation"  log allocation and freeing of ImgBuf_Ptrs
+
+ "KyoceraSequencer" Head-specific K300, K600, K1200 Kj4 sequencer-specific logging
+ "KyoceraSerial"    Head-specific K300, K600, K1200 Kj4 serial commands logging
+
+There are some other logging categories, but they are very specific and intended for internal use.
+
+
+--- additional settings related to logging 
+
+There are some additional settings in [Test] sections that can be used to control logging.
+Some of them are legacy and directly correspond to loogging categories, some not.
+
+* "LogCommands"         def value:0, the same meaning as "Commands" logging category
+* "LogSetup"            def value:0, the same meaning as "Setup" logging category
+* "LogCompactFlash"     def value:0, the same meaning as "Flash" logging category
+* "LogTranslatorEvents" def value:0, the same meaning as "TranslatorEvents" logging category
+* "LogTranslatorTimes"  def value:1, the same meaning as "TranslatorTimes" logging category
+* "LogUsbPackets"       def value:0, the same meaning as "UsbPackets" logging category
+
+* "LogPdEvents"         def value:1. This key allows to turn OFF PD events logging. PD events are logged by 
+                        default and provide very useful information. But sometimes PD events come too 
+                        quickly and there can be a lot of them, so, whole PrintEngine log is filled with them.
+                        It such a case it may be useful to switch PD events logging off if the system works correctly.
+
+* "LogThreadId"         def value:1 if 1 then log line preamble (value in [] ) will contain thread id, if 0, it will be a 
+                        logging category code. 
+
+
+-------------------------------------
+--- PrintEngine disk logging.
+
+By default PrintEngine stores its logs in a number of log files that can be analysed for debugging purposes by 
+support team.
+
+
+--- Important: Logging can produce quite a large amount of data being written to disk, so in order not to affect
+PrintEngine performance, especially when logging large dumps of data ("WaveformData" category, for example) it 
+is a good idea to select fast and responsive media to store log files. Normal HDD, SSD is fine, but redirecting logging
+to a network drive, USB stick or SD card is a pretty daft idea.
+
+Also, sometimes when dumping large amount of data, Motitor (Debug tab) can report a warning that 
+"debug message queue is overflown and some messages are lost". There is no reason to worry about it - Monitor 
+program can lose some portion of logging, but logging to disk works much faster, so, the logs would be saved
+to log files anyway.
+
+
+PrintEngine disk log doesn't grow infinitely. Log messages are being written into a current log file 
+(usually "PrintEngine.Log"). When size of this file becomes larger than some value (see MaxLogFileLength below), then 
+this file is placed into a circular queue of files (e.g. "PrintEngine.000.Log") and truncated to 0 size.
+The size of this cirqular queue is also limited (see MaxLogFilesToKeep below).
+So, if (by default) max. log file size is 1MB and Max. number of files to keep is 10, then the overall
+size of log files won't exceed (1+10)*1MB
+
+
+The default logging settings should be enough for normal system functioning, but it is possible to tweak
+them if required. Logging settings live in [Test] section of the Meteor config file, and here are some of them
+explained.
+
+LogToDisk = 1;  1 by default, which enables writing log files. if it is 0 then there is no writing to *.log files.
+                But there shouldn't be any reasons NOT to use log files.
+
+
+LogFile = "PrintEngine.Log"; Default Log file name. Can include full path. Otherwise logs created in “Config” directory.
+                             Note: if you change log file name, keep *.log file extension, 
+                             otherwise "Send Status Report" command may stop working properly.
+
+
+MaxLogFileLength = 1000000;  Max. length of a single log file in _bytes_. Default value is 1048576 (1MB)   
+                             Valid values:[1Mb..32Mb]
+
+
+MaxLogFilesToKeep = 10;      Max. number of log files to keep in a cirqular queue. Default lalue is 10, 
+                             Valid values:[1..1000]
+
+
+-------------------------------------
+--- Creating a status report.
+
+"Monitor" application now has a "Magic button"  called "Send status report". 
+Activating this button dumps some useful PrintEngine information to log, then PrintEngine calls a 
+"MkStatRpt.cmd" command line script that is found near PrintEngine.dll (if Meteor had been installed explicitly) 
+or in "PrintEngine" directory for developer version. 
+This cmd script can do various things, but currently it zips all *.log, waveform files and a current config file 
+into an archive with the name like "rpt_[dd-mm-yyyy]_[hh-mm-ss]", made of current date and time. 
+These files are placed into "StatusReport" directory that lives in the folder where config files located. 
+Optionally Windows explorer window opened in this folder.
+
+
+
+
+
+
+
+
+
+
+

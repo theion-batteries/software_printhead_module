@@ -1,0 +1,120 @@
+=================================================================================================
+Some information regarding Kyocera KY1200RM (KJ4B-1200-016SR-PAL1) head waveforms
+=================================================================================================
+
+We currentlty assume that:
+
+    * KY1200RM HDC drives 1 head
+    * KY1200RM head has 2 "halves" or "Jetting Assemblies" (JAs): Unit1 & Unit2 in datasheet terminology
+    * Every JA has 6 ASICs, each ASIC requires 2 voltages. Thus, 24 voltage parameters per whole head.
+        
+
+
+--- Waveforms configuration:
+
+    It is possible to override default waveforms that can be stored inside Kyocera head.  
+    Meteor software can load waveform data from file and it is uploaded to the head. Alternatively, 
+    waveform loading can be omitted and the head will use one stored in its non-volatile memory.                                                                                                    
+
+    If it is required to specify WF that is different from one stored in the head, then Meteor config file
+    shoud contain following information:
+    
+    * Path to the waveform file(s) in  [KY1200RM] section (upto 100 files in total) E.g:
+        [KY1200RM]
+
+        Waveform1 = "Waveform\Kyocera\KY1200RM\SampleWF_1.txt"  ; Sample waveform file 
+        Waveform2 = "Waveform\Kyocera\KY1200RM\SampleWF_2.txt"  ; Sample waveform file 
+
+        
+    * Index of the WF file to be used to select Wf file. Index value is [0..100].
+      Default index value 0 has a special meaning: "use default waveforms stored in the Kyocera head", don't use WF file.  
+      Index values [1..100] correspond to Waveform1..Waveform100 file name keys.
+      E.g:      
+
+        [DefaultParameterValues]
+        WaveformFileIdx = 0 ;Global default value, "0" means using WFs stored in the head.
+     
+        [HeadDriver1:1]
+        WaveformFileIdx = 1  ; WF file index for PCC1:Head1
+        
+      In this example whole system will use WF file index 0 apart from a head on PCC1:HDC1 that will use 
+      WF file with index 1.
+
+      It is also possible to specify one "WaveformFileIdx" value in [ControllerX] section, in this 
+      case it will apply to PCC (PDC) number 'X'. This is because PDC-K1200RM is just a PCC that drives one 
+      onboard HDC, which in turn, drives one head. 
+
+
+    * It is also possible to select the waveform by changing KPEX_WF_FileIdx parameter via SetParamEx() API.
+      New waveform will be used after StartJob() command.  
+
+
+--- notes on WF file format.
+
+    WF for this head type is made of 12*512 bytes.
+
+    Originally WF data comes from *.csv file supplied by Kyocera. Each line of that file contains 512 decimal values for 
+    "Driving WF FireXX" head memory region, where XX is [0..11] (see specs). 
+    The problem is this file contains too much information.
+    The meaningful WF information in this file is in the first 12 lines, the rest of the file must be ignored.
+    Meteor system requires _exactly_ 12*512 bytes of waveform data, otherwise WF is rejected and
+    error message logged.
+
+    In the early versions on KY1200RM implementation WF file format was pretty basic: it was just a text file
+    with comma-separated values. The number of required values was 12*512, so, just using first 12 lines
+    of original Kyocera csv file used to work.
+
+    But introduction of encrypted/non-encrypted waveforms required WF file format change; the previous way of
+    loading waveforms can not be used anymore, file format was extended to include additional options, like
+    waveform encryption flag.
+    
+
+    So, if you see errors like:
+     *** INI: Key outside section on line 15: '0,0,54,1,8,...
+     *** Invalid WF file format! file:\Config\Waveform\Kyocera\KY1200RM\SampleWF_1.txt
+    Then it means that Meteor tries to load WF in an old format and this doesn't work.
+
+
+    Thus, it is required to provide Meteor with a new file format derived from the WF data from Kyocera.
+    WF file format is similar to Meteor config file and looks as follows:
+
+    ------ <beginning of the WF file> -----
+    ;-- this is just some comment, they start with ';'character    
+
+    [generic]
+    HeadType    = KY1200RM ; Head Type
+    Version     = 1        ; file version
+    Encryption  = 0        ; 0 for not encrypted WF, 1 for encrypted
+
+    [WaveformData]
+    ;-- This dump should contain exactly 12*512 = 6144 bytes of data.
+    ;-- It is usually first 12 lines of *.csv file that comes from Kyocera
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    90,0,108,55, ...........
+    
+    ------ <end of the WF file> -----
+
+    * "Encryption" key must be 0 for "non-encrypted" waveforms and 1 for "encrypted".
+    * [WaveformData] section must contain the same first 12 lines of WF data from the original Kyocera *.csv file.
+
+    So, the easiest way to make WF file is to take either this example or some other existing valid Meteor WF
+    file for KY1200RM, set "Encryption" value depending if WF data is encrypted or not, delete contents of 
+    [WaveformData] section, copy first 12 lines from original Kyocera *.csv file and paste it to the [WaveformData] 
+    section.
+    
+
+
+
+
+
+

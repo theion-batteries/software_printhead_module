@@ -1,0 +1,80 @@
+A brief note on how fine row adjustments work on SRC1800 head
+------------------------------------------------------------------------
+
+
+
+            ============ HDC Head 0 =========        ============ HDC Head 1 ========= 
+            M_A     M_B        M_C      M_D          M_A     M_B        M_C      M_D   
+            0pix   137pix     222pix    359pix       0pix   137pix     222pix    359pix
+            0mm    5.8mm      9.4mm     15.2mm       0mm    5.8mm      9.4mm     15.2mm   
+            ---------------------------------        --------------------------------- 
+             o       o          o         o           o       o          o         o   
+             o       o          o         o           o       o          o         o   
+             o       o          o         o           o       o          o         o   
+             o       o          o         o           o       o          o         o   
+             [..............................]         [..............................] 
+             o       o          o         o           o       o          o         o   
+             o       o          o         o           o       o          o         o   
+             o       o          o         o           o       o          o         o   
+            ---------------------------------        --------------------------------- 
+
+HDC row:     0      4          2         6           1       5          3         7       
+
+RowAdj      Val0   Val1      Val2      Val3         Val0   Val1        Val2      Val3  
+
+Tick Offset  0      1          2         3           4       5          6         7
+Reg Nibble
+
+
+SRC1800 head is made of 4 modules (nozzle rows) M_A, M_B, M_C, M_D (see the picture above)
+Their offsets within the head are: 0, 137, 222, 359 pix.
+Each HDC drives 2 heads, so, there are 8 HDC nozzle rows, and they are interleaved.
+
+Every HDC nozzle row has its own nibble (4 bits representing offsets in 1/16 of a pixel) in a tick offset register.
+Thus, there are 8 nibbles in forward and 8 nibbles in reverse tick offset registers.
+
+As mentioned in a default config file, each nozzle row (head module) can be individually 
+adjusted by using 4 values, like:
+
+[HeadX:Y:Z]
+Row_X_Adj_cpix  = val0,  val1,  val2,  val3
+
+For head orientation 0 val0 corresponds to the M_A nozzle row adjust,  val1->M_B,  val2->M_C,  val3->M2_D
+For head orientation 1 val0 corresponds to the M_D nozzle row adjust,  val1->M_C,  val2->M_B,  val3->MA 
+
+
+-----------  an example from config file / log ------------------ 
+-- All fine row adj are 0
+
+Orientation 0
+[Head1:1:1]
+Row_X_Adj_um   = 0, 0, 0, 0
+
+>>> HdcRowIdx:0, FWD RowPos:0.000 pix,   ticks:0x00, REV RowPos:359.060 pix, ticks:0x00 
+>>> HdcRowIdx:1, FWD RowPos:0.000 pix,   ticks:0x00, REV RowPos:359.060 pix, ticks:0x00 
+>>> HdcRowIdx:2, FWD RowPos:222.050 pix, ticks:0x00, REV RowPos:137.010 pix, ticks:0x00 
+>>> HdcRowIdx:3, FWD RowPos:222.050 pix, ticks:0x00, REV RowPos:137.010 pix, ticks:0x00 
+>>> HdcRowIdx:4, FWD RowPos:137.010 pix, ticks:0x00, REV RowPos:222.050 pix, ticks:0x00 
+>>> HdcRowIdx:5, FWD RowPos:137.010 pix, ticks:0x00, REV RowPos:222.050 pix, ticks:0x00 
+>>> HdcRowIdx:6, FWD RowPos:359.060 pix, ticks:0x00, REV RowPos:0.000 pix,   ticks:0x00 
+>>> HdcRowIdx:7, FWD RowPos:359.060 pix, ticks:0x00, REV RowPos:0.000 pix,   ticks:0x00 
+
+-----------------------------------------
+Orientation 0
+[Head1:1:1]
+Row_X_Adj_cpix = 8, 16, 24, 32
+ticks            1  2   4   6
+
+>>> HdcRowIdx:0, FWD RowPos:0.080 pix,   ticks:0x01, REV RowPos:359.300 pix, ticks:0x04 
+>>> HdcRowIdx:1, FWD RowPos:0.000 pix,   ticks:0x00, REV RowPos:359.380 pix, ticks:0x06 
+>>> HdcRowIdx:2, FWD RowPos:222.290 pix, ticks:0x04, REV RowPos:137.090 pix, ticks:0x01 
+>>> HdcRowIdx:3, FWD RowPos:222.050 pix, ticks:0x00, REV RowPos:137.330 pix, ticks:0x05 
+>>> HdcRowIdx:4, FWD RowPos:137.170 pix, ticks:0x02, REV RowPos:222.210 pix, ticks:0x03 
+>>> HdcRowIdx:5, FWD RowPos:137.010 pix, ticks:0x00, REV RowPos:222.370 pix, ticks:0x05 
+>>> HdcRowIdx:6, FWD RowPos:359.380 pix, ticks:0x06, REV RowPos:0.000 pix,   ticks:0x00 
+>>> HdcRowIdx:7, FWD RowPos:359.060 pix, ticks:0x00, REV RowPos:0.320 pix,   ticks:0x05 
+PrintEngine::CMultiRowHead::WriteTickOffsetRegisters() PCC:1, HDC:1, Orient:0, Head L2R:0
+PrintEngine::CMultiRowHead::WriteTickOffsetRegisters() BaseReg_Fwd:0x500, val:0x00006421, BaseReg_Rev:0x510, val:0x55560134
+----------------------------------------------------------------------
+
+

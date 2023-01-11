@@ -1,0 +1,162 @@
+
+=================================================================================================
+A contemporary way of specifying waveforms for RG4/RG5 heads
+=================================================================================================
+
+The legacy way of specifying waveforms for RG4/RG5 heads was:
+
+    [RicohGen5] 
+    WaveformID          = 1     ; Waveform file to be applied globally
+    TickleWaveformId    = 2     ; Set to ID of waveform to use for tickling, zero if unused
+
+Which allowed assigning one working waveform and one tickling WF  for all heads in the system.
+(if TickleWaveformId is 0, then tickle WF wasn't used).
+
+This turned to be not enough and WF assignment mechanism was extended to the way it works on a newer 
+head types: with using parameters override mechanism in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y] sections.
+
+Old parameters "WaveformID", "TickleWaveformId" still can be present for the compatibility sake in [RicohGenX] section,
+but they will be superseded with  a new "WaveformFileIdx" "TickleWaveformFileIdx" parameters, thus, it makes 
+sense not to use them at all to avoid confusion.
+
+Config file  "DefaultRicohGen5_PccE.cfg" gives a pretty good example of how to assign different 
+working/tickling waveforms to whole system, PCC, HDC and heads' jetting assemblies. 
+
+N.B. When playing with assigning different waveforms to different heads/JAs, it is always useful to:
+    * Check log file for errors
+    * check assignment, which file gets assigned to which part of the head. For this it is necessary to 
+        enable "Waveforms" logging category. (E.g.place  LogModules = "Waveforms" in [test] setion)
+
+    Log file entry may look as follows:
+
+    "Opening print WF file:'\SampleRG5Waveform.mrw' [1] for:[00:00:00:01]"
+
+    Where [1] is WF file index, and [00:00:00:01] corrsponds to PCC:1, HDC:1, head:1 JA:2
+
+
+ ------------------------- setting working/tickling waveform indices via PrintEngine API
+    It is still possible to assign a working waveform index to any PCC:HDC:Head:JA in the system using old PiSetParam() API 
+    by sending CCP_HEAD_WFILE_EX command. But it is not possible to assign tickling WF id this way.
+
+    Instead it is better to use modern SetParamEx() API that allows changing both working and tickling WF ids the 
+    same way. Working/tickling WF indices can be set by using following parameters:
+
+        name:WaveformFileIdx,       id:CPEX_WF_FileIdx,         valid range:[1..40], def:1, scope:ANY.
+        name:TickleWaveformFileIdx, id:CPEX_TickleWF_FileIdx,   valid range:[0..40], def:0, scope:ANY.
+    
+    As usual, all the changes will be applied after StartJob command. Also, any attempt to use WF index for 
+    the WF file that doesn't exist will produce errors only after StartJob command as well.
+
+
+------------------------- Waveform constraints:
+ * 1..8 pulses per Waveform, 2..8 segmenst per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same voltage.
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * Max. absolute voltage slew rate is 17.5 V/us 
+
+ -------------------------  Waveforms scaling
+
+    It is possible to slightly scale RG4/RG5 waveforms. "Scaling" is just multiplying WF voltage by some coefficient 
+    before sending data to HDC DAC.
+
+
+    --- specifying a new WF voltage (or scaling WF)
+
+    In general RG4/RG5 waveforms look like:    
+                              
+      Vp (VStart) ---\                 /---- VEnd
+              ^       \         ---\__/    
+              |        \       /     
+              |         \     /      
+              |          \---/       
+              |                   
+           __ v____ 0 volts______________
+
+
+    It starts (and ends) at some VStart voltage or VP. This voltage is defined in the waveform file and also
+    can be referred as "WF base voltage".
+    If there is no "WF scaling", then waveform voltages are exactly the same as in the WF file.
+    To scale the waveform it is necessary to specify new "WF base voltage" or Vp.
+
+    For example, let's  assume that the original Vp (or VStart) is 17.0 volts.
+    If we specify new Vp value as 23.5V, then whole waveform will be scaled by factor 23.5/17.0 == 1.382.
+
+    The way WF is scaled (preserving slew rate or preserving pulse time) depends on WfmScaleSlewConst parameter 
+    in the config file.
+
+    There are 2 scaling modes: Mode0 preserves pulse hold time, but changes pulses slew rate 
+                               Mode1 preserves slew rate, but sacrifices pulse hold time.
+
+    Scalig mode is specified in config file, e.g
+        [RicohGen5]
+        WfmScaleSlewConst   = 1     ; Vp scale mode 0 = constant time 1 = constant slew
+
+
+
+    Waveform scaling can be applied to every head's nozzle row individually. It can be done in a number of ways:
+
+        * specify "HeadVoltage" parameter in the Meteor config file 
+        * using SetParamEx() API to set CPEX_HeadVoltage parameter
+        * using PiSetParam() API to set CCP_V_ADJUST_EX parameter (legacy way, not recommended for future use).
+            Internally this is mapped to setting CPEX_HeadVoltage parameter anyway.
+
+
+
+    --- using config file:
+    
+    "HeadVoltage" parameter specifies WF "Base Voltage" or Vp. It can be in a range[0..36.0] volts. 
+    Default value 0 means "Don't use scaling".
+
+    This parameter can be placed in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+    If due to scaling WF voltages go out of valid range, then error message is logged (on StartJob) and waveform is ignored.
+    "DefaultRicohGen5_PccE.cfg" config file has an example of this parameter usage.
+
+    --- using SetParamEx() API and CPEX_HeadVoltage parameter:
+    This method can be used to change WF base voltage dynamically.
+    
+
+
+    --- using PiSetParam() API with CCP_V_ADJUST_EX parameter:
+
+    This is the legacy way of WF scaling and it is not recommended for using in future applications.
+    It is much simpler to use Meteor config file for static settings and CPEX_HeadVoltage parameter for dynamic 
+    changes.
+    
+    CCP_V_ADJUST_EX = 0x0000003C,   // HT_RG4, HT_RG5: Vp in 0.1v steps; 0 to use waveform's original voltage.
+
+    CCP_V_ADJUST_EX command addressing: It accepts following arguments to select PCC/HDC/Head:
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - NozzleRow   [1..4] referred as JA1..Ja4 below.
+    
+    There are special values for these parameters. 
+        - If both PccNum, HdcNum and "aNum" are 0, then ALL heads in the system will be addressed.
+        - If HDC Number and "aNum" is 0, then all nozzle rows on all heads aon the given PCC will be addressed.
+        - If "aNum" is 0, then ALL nozzle rows on HDC will be addressed 
+            (e.g. for setting the same voltage scaling coefficient for ALL nozzle rows)
+
+    --- HDC-RG5:
+    For RG5 head addressing is simple, because HDC drives 1 head, the head has 4 nozzle rows A,B,C,D.
+    So, JA1->row A, JA2->row B, JA3->row C, JA4->row D
+
+    --- HDC-RG4:
+    For RG4 case HDC drives 2 heads, each head has 2 nozzle rows "odd" and "even" according to the head specs.
+    JA1->Head1, odd  nozzle row
+    JA2->Head1, even nozzle row 
+    JA3->Head2, odd  nozzle row
+    JA4->Head2, even nozzle row 
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,64 @@
+
+=================================================================================================
+    Getting static Xerox W-series head information
+=================================================================================================
+
+Static information, like head serial number etc. is extracted from head NVRAM and published as "EEPROM data".
+This information can be obtained in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+an example of the JSON output from TestApp:
+
+{
+   "#HeadType" : "HT_Xerox_W",
+   "#InfoType" : "Head EEPROM Data",
+   "00:00:ff:ff" : {
+      "#DataValid" : true,
+      "HeadInfo" : {
+         "CalibrationDate" : 17703,
+         "DrvBoardType" : 4,
+         "HeadVersion" : "N2705",
+         "JetCount" : 5544,
+         "NVRamVer" : 46,
+         "SerialNumber" : "IP1-N2705-7194",
+         "WfCount" : 2
+      },
+      "PrtVars" : {
+         "DisabledNozzles" : [
+            1640,
+            2168,
+            2344,
+            2360,
+            2503,
+            2528,
+            2534,
+            2595,
+            2844,
+            2906,
+            2984,
+            3032,
+            3179,
+            3374,
+            3809,
+            3833,
+            3881,
+            3905,
+            4481,
+            4485,
+            5450
+         ],
+         "VBias_V" : -15
+      }
+   }
+}
+
+
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt
+
+
+
+
+

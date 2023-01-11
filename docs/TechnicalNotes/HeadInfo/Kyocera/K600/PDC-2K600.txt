@@ -1,0 +1,121 @@
+=================================================================================================
+    Some information about configuration parameters for Kyocera KJ4B-600 head driven by  PDC-2K600
+=================================================================================================
+
+
+Hardware configuration:
+    PDC-2K600 drives two KJ4 600 DPI heads. Default config file is: "DefaultK600.cfg"
+
+
+There are currently 2 extremely similar HT_K600 head types that can be driven by PDC-2K600.
+The only difference between them seems to be the drive voltage range:
+
+KJ4B-YH06WST  drive voltage limits: [22, 26V] -> VDrv_Miv= 22V 
+KJ4A-RH06CST  drive voltage limits: [24, 28V] -> VDrv_Miv= 24V  
+
+--- Head drive voltages
+KJ4B-600 head has 4 "print units" or "Jetting Assemblies" (JAs) in Meteor terminology.
+"Print unit" drive voltage is calculated as follows:
+
+PrintUnit[0..3]_VDrv = VDrv_Miv + PrintUnit[0..3]_AbsV + HeadVoltageAdjust
+
+    PrintUnit[0..3]_AbsV is an offset [0, 2V], can be set for each "print unit" individually
+    HeadVoltageAdjust    is another offset [-4, +4V], applies for the whole head (all "print units" at once)
+
+Note that "PrintUnit[0..3]_AbsV" and "HeadVoltageAdjust" are properties of the head itself, if set in the Meteor
+config file, they will permanently overwrite the previously writtent values. So, it may be a good idea to 
+store factory-default values somewhere (write on a bit of paper, for example) before playing with voltages.
+See "Head EEPROM data" chapter.
+
+Also note that a sum of VDrv_Miv + PrintUnit[0..3]_AbsV + HeadVoltageAdjust can easily go outside
+the range [VDrv_Miv, VDrv_Max]. The problem here is that Kyocera doesn't provide any means to find out what 
+VDrv_Miv is, so, it is up to the user to verify that the result voltages are in a valid range.
+
+
+--- Setting WHOLE head adjust voltage :
+
+The simplest way to set heads voltage is to specify parameter "HeadVoltageAdjust"
+This parameter can be specified in the following sections:
+
+    [DefaultParameterValues]  - value applies to the whole fystem
+    [ControllerX]             - value applies to the PDC:X only 
+    [HeadDriverX:Y]           - list of 2 values, each applies to PDC:X, head1 and head2 respectively.
+
+
+"HeadVoltageAdjust" value should be in the range:[-4.0, +4.0] volts and applies to all 4 head's "print units" 
+at the same time.
+
+
+
+--- Setting voltages for individual print head units.
+
+KJ4B-600 head has 4 "print units" or "Jetting Assemblies" (JAs) in Meteor terminology. It is possible to set 
+individual voltages for each of these JAs.
+For some reason head "print unit" voltages are specified as offsets to base VDrv_Miv (see above), and these
+voltages should be in the range:[0..4.0] volts, which the head internally interprets as 
+[VDrv_Miv+0..VDrv_Miv+4.0] voltage range. 
+
+This parameter can be specified in the following sections:
+
+    [DefaultParameterValues]  - value applies to the whole fystem (probably doesn't make much sense)
+    [ControllerX]             - value applies to the PDC:X only (probably doesn't make much sense)
+    [HeadDriverX:Y]           - list of 2 values, each applies to PDC:X, head1 and head2 respectively. (probably doesn't make much sense)
+    [HeadX:Y] - list of 4 values that are applied to HeadX:Y, "print unit1"..."print unit4" respectively.
+
+for example:
+
+    [Head1:2]
+    HeadAbsVoltage = 1.0, 1.5, 3.0, 4.0 
+
+This will set drive unit voltages as follows:
+
+                Head1:2, U1 voltage to VDrv_Miv+1.0V
+                Head1:2, U1 voltage to VDrv_Miv+1.5V
+                Head1:2, U1 voltage to VDrv_Miv+3.0V
+                Head1:2, U1 voltage to VDrv_Miv+4.0V    
+
+
+Note that on top "HeadVoltageAdjust" is added, but it is all done entirely within the print head.
+
+
+
+
+--- Updating head drive voltages on the fly.
+
+It is possible to set new JA voltages by using PiSetParamEx() API and CPEX_HeadVoltageAbs, KPEX_HeadVoltageAdj parameters.
+You will also need to specify PEAddress PCC:HDC:1:JA. '1' here means "Head1" (HDC drives only 1 head) and 
+JA [1..4] corresponds to the U1..U4 within the head.
+This parameter can also be set using TestApp (see "\TechnicalNotes\TestApp\Params_Signals.txt" for more detail).
+If the head is powered on, voltage parameters change will be picked up immediately and sent to the head.
+
+
+--- Head EEPROM data.
+
+Some static information (head S/N, some voltages) is being read from the head on powering it up and 
+sent to Meteor as "head EEROM data". It may contain some useful bits of information.
+
+See also "\TechnicalNotes\TestApp\Head_EEPROM.txt" for more information.
+
+An example of "head EEROM data" from one of our heads:
+
+
+
+{
+  "#HeadType" : "HT_K600",
+  "#InfoType" : "Head EEPROM Data",
+  "01-02-01-01" : 
+  {
+    "AdjustmentVoltage" : "1.5",
+    "DriveNumber" : 295992194,
+    "DriveVoltageU1" : "23.0V",
+    "DriveVoltageU2" : "23.0V",
+    "DriveVoltageU3" : "25.0V",
+    "DriveVoltageU4" : "26.0V",
+    "SerialNumber" : "5001",
+    "Shippeddate" : "01/14",
+    "Tempr.Lowerlimit" : 30,
+    "Tempr.Upperlimit" : 32
+  }
+}
+
+

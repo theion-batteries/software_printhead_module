@@ -1,0 +1,134 @@
+=================================================================================================
+    Some information regarding Kyocera KY1200_MD head waveforms and similar data
+=================================================================================================
+
+
+-------------------------------------------------------------------------------------------------
+--- Saving waveform and other data downloaded from the head on power on.
+-------------------------------------------------------------------------------------------------
+
+
+This feature is enabled by key "SaveWaveformData" in the ['Head'] section of the config file, e.g
+
+    [KY1200_MD]
+    SaveWaveformData = 1 ;-- 1 enables saving waveforms/other data to the file.
+
+Waveforms are saved into the directory that is specified by optional parameter
+    [Test]
+    PccUploadLogsPath = "PCC_DownloadedLogs" ; default value
+
+Its default value is \Config\PCC_DownloadedLogs
+    
+The waveform file name looks as follows: "KY1200_MD_Waveform[Pcc1_Hdc1].txt"
+I.e. file name containd PCC/HDC number. You can find head serial number and a timestamp in the file.
+
+Note that waveforms etc. are saved every time the head is powered overwriting existing files 
+
+
+
+-------------------------------------------------------------------------------------------------
+--- Waveforms configuration:
+-------------------------------------------------------------------------------------------------
+
+In the simplest case nothing needs to be configured, so, wavefoms stored in the head EEPROM will be used.
+It is possible to override default waveforms that are stored inside Kyocera head.  
+Meteor software can load waveform data from a file and it is uploaded to the head, overwriting the existing one. 
+
+
+If it is nesessary to specify WF that is different from one stored in the head, then Meteor config file
+shoud contain following information:
+    
+    * Path to the waveform file(s) in [KY1200_MD] section (upto 100 files in total) E.g:
+        [KY0600_EX]
+
+        Waveform1 = "Waveform\Kyocera\KY1200_MD\KY1200_MD_SampleWf.txt"  ; Sample waveform file
+        Waveform2 = "Waveform\Kyocera\KY1200_MD\KY1200_MD_SampleWf2.txt" ; Sample waveform file
+
+
+    * Index of the WF file to be used to select Wf file. Index value is [0..100].
+      Default index value 0 has a special meaning: "use default waveforms stored in the Kyocera head", don't use WF file.  
+      Index values [1..100] correspond to Waveform1..Waveform100 file name keys.
+      E.g:      
+
+        [DefaultParameterValues]
+        WaveformFileIdx = 0 ;Global default value, "0" means using WFs stored in the head.
+
+        [Controller1]
+        WaveformFileIdx = 1  ; WF file index for PDC1:Head1
+     
+        [HeadDriver1]
+        WaveformFileIdx = 1  ; WF file index for PDC1:Head1 (the same as above)
+
+        
+
+    * It is also possible to select the waveform by changing KPEX_WF_FileIdx parameter via SetParamEx() API.
+      New waveform will be applied after StartJob() command.  
+
+
+--- notes on WF file format.
+    
+    WF for this head type is made of 105 bytes. 
+    
+    [WaveformData]
+    section must contain a byte dump in decimal format. It is recommended to take a look into the waveform file downloaded
+    from the head (see above) to see how it is organised.
+
+
+
+
+-------------------------------------------------------------------------------------------------
+--  Using palette
+-------------------------------------------------------------------------------------------------
+
+    Palette allows remapping source greyscale values[0..7], 3BPP to 4-bit head data that is actually printed.
+    Default mapping is 1:1, i.e GSLevel0->0, GSlevel1->1 ... GSlevel7->7.
+    It is posssible to change this mapping by modifying KPEX_PltRegVal parameter from the config file or 
+    via SetParamEx() API.
+    The default value of this parameter is 0x76543210, which gives 1:1 mapping as described above (unsupported values ignored).
+    Config file parameter name is "PltRegVal" and it can be used in [DefaultParameterValues], [ControllerX] sections. 
+    
+    Parameter in [DefaultParameterValues] defines value for WHOLE system.
+    Parameters in [ControllerX] section allow overrinding value for every HDC on a PCC:X. 
+    As soon as PDC-K1200 has 1 HDC that drives 1 head, parameters' list length is just 1 value.
+
+
+    An example (see head datasheet as well): 
+    The head comes with 2BPP waveform that has following definitions:
+
+    ---------------------------------
+    Fire1       Small drop
+    Fire2       Large drop
+    Fire3       Blank
+    Fire4       Blank
+    Fire5       Blank
+    Fire6       Blank * Meteor uses "Fire6" value for "Tickling"
+    Fire7       Blank
+    ---------------------------------
+
+    This 2BPP mode uses FIRE1, FIRE2 and the palette definition looks as follows: 
+
+        [Controller1]
+
+        PltRegVal = 0x22222210
+        ;             |.. ||||   
+        ;             |   |||+-- value for GSLevel 0    (nibble 0) "No Fire"
+        ;             |   ||+--- value for GSLevel 1    (nibble 1) "Fire1", small drop
+        ;             |   |+---- value for GSLevel 2    (nibble 2) "Fire2", large drop
+        ;             |   +----- value for GSLevel 3     ....                           
+        ;             |  ......
+        ; !Spit GL -> +--------- value for GSLevel 7    (nibble 7) "Fire2", large drop                          
+
+        -- Note on "PltRegVal" format: This parameter (palette) is represented by a single 32-bit value. This value in turn 
+        is made of 8 "nibbles" 4 bits each (see the drawing above). Thus, each nibble specifies the print data value.
+        A nibble is made of 4 bits and Meteor in general suppports true 4 BPP, so, in theory, it is possible to use
+        value 0x0-0xF in hex or 0..15 in decimal as a palette entry. But as soon as this head supports only 3 BPP maximum, 
+        meaningful values are [0..7] only. Using values greater than 7 is not recommended.         
+        
+        This explains why in the config file palette is defined as a 32-bit hexadecimal number (starting with prefix '0x'). 
+
+
+        ! Note on spitting: Meteor uses highest palette entry7 (value in nibble7) for the spitting.
+        That explains why in the example above nibble7 has a value 5, it is "Fire5", extra large drop.
+        If you use hardcoded default palette value 0x76543210, then "Fire7" will be selected for spitting, but
+        it is not mapped to anything in the head, so, it won't spit
+

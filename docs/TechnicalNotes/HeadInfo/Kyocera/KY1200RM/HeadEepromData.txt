@@ -1,0 +1,32 @@
+
+=================================================================================================
+Getting static KY1200RM head information
+=================================================================================================
+
+Static information, like head serial number etc. is published as EEPROM data
+and can be obtainned in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+ 
+an example of the JSON output from TestApp:
+ 
+{
+  "#HeadType" : "HT_KY1200RM",
+  "#InfoType" : "Head EEPROM Data",
+  "01-01-01-01" : 
+  {
+    "#DataValid" : true,
+    "HeadS/N" : "????????",
+    "U1_Fire0" : "VRef:20.00v, VGain:1.0000",
+    ...... skipped .....
+    "U2_Fire9" : "VRef:0.00v, VGain:1.0000"
+  }
+}
+
+Note that head S/N is not decoded, our head has this field filled with 0s.
+Initial values of VRef/VGain for every head ASIC are reported here because they can be set at the 
+factory as calibrated values and worth saving somewhere.
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt

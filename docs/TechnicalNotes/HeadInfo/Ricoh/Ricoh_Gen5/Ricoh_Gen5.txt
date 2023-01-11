@@ -1,0 +1,198 @@
+=================================================================================================
+    Some information on "Ricoh_Gen5" head type
+=================================================================================================
+
+
+"Ricoh_Gen5" (HT_RicohGen5) head type is a new software implementation of the existing "RG5" (HT_RG5) type.
+This technical note is not applicable for users of the HDC-R5. Users of this board should use the "RicohGen5" headtype definition instead.
+
+The hardware configuration is: 
+PCC-Z drives HMB-2R5, which is basically 2 RG5 HDCs, and each HDC drives one head. The head has 4 nozzle rows or JAs.
+Currently it is supported on PCC-Z only.
+
+From Meteor system point of view  HMB-2R5 is just 2 "HDCs" on the same PCB, each HDC still drives one Ricoh head.
+So, in theory, this configuration is not different from the case of PCC-E driving only 2 HDC-R5 boards.   
+
+    PE-addressing [PCC, HDC, Head, JA] for this scenario looks as follows: 
+
+        [PCC, 1, 1, 1]    Head1, JA1 on a specific PCC, "HDC1" \
+        [PCC, 1, 1, 2]    Head1, JA2 on a specific PCC, "HDC1"  \
+        [PCC, 1, 1, 3]    Head1, JA3 on a specific PCC, "HDC1"  / Physical Head1 connected to PDC
+        [PCC, 1, 1, 4]    Head1, JA4 on a specific PCC, "HDC1" /
+
+        
+        [PCC, 2, 1, 1]    Head1, JA1 on a specific PCC, "HDC2" \
+        [PCC, 2, 1, 2]    Head1, JA2 on a specific PCC, "HDC2"  \ Physical Head2 connected to PDC
+        [PCC, 2, 1, 3]    Head1, JA3 on a specific PCC, "HDC2"  /
+        [PCC, 2, 1, 4]    Head1, JA4 on a specific PCC, "HDC2" /
+        
+
+    Note that 'Head' index is always 1, because there is only one head per built-in "HDC" on HMB-2R5.
+    Built-in "HDC"  index is either 1 or 2.
+
+
+
+
+-------------------------------------------------------------------------------------------------
+    Waveforms
+-------------------------------------------------------------------------------------------------
+
+The "Ricoh_Gen5" head type uses the same *.mrw waveform files. 
+Each head has 4 nozzle rows or JAs and every JA can have its own individual and tickling waveform. 
+
+In the Meteor config file upto 100 WF files can be specified in [Ricoh_Gen5] section, as follows:
+
+[Ricoh_Gen5]
+Waveform1 = "Waveform\Ricoh\RG4_RG5\SampleRG5Waveform.mrw"
+Waveform2 = "Waveform\Ricoh\RG4_RG5\SampleRG5Waveform.mrw"
+Waveform3 = "Waveform\Ricoh\RG4_RG5\SampleRG5WaveformV4.mrw"
+Waveform4 = "Waveform\Ricoh\RG4_RG5\TickleRG5Waveform_1.mrw"
+
+A concrete waveform is selected by "WaveformFileIdx" parameter (WORKING waveform) and "TickleWaveformFileIdx" (tickling WF).
+These parameters can be specified in any [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y] sections.
+
+Default value for "WaveformFileIdx" is 1.
+Default value for "TickleWaveformFileIdx" is 0, which means "no tickle waveform".
+
+SetParamEx() API with CPEX_WF_FileIdx and CPEX_TickleWF_FileIdx parameters can be used to select required waveform 
+on the fly. As usual, all the changes will be applied after StartJob command. Also, any attempt to use WF index for 
+the WF file that doesn't exist will produce errors only after StartJob command as well.
+
+
+---- Waveform voltages scaling 
+
+
+It is possible to slightly vary WF voltages without changes in WF file. "Scaling" is just multiplying WF voltage 
+by some coefficient before sending data to HDC DAC.
+
+This "WF scaling" can be applied to: 
+ * each head's JA  individually
+ * whole head (All JAs at the same time)
+ * all heads/HDCs on the same PCC
+ * All PCCs/HDCs/Heads in whole system.
+
+WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+
+"WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+Note that it has quite narrow range.
+This parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+Usual mechanism of “parameters overriding” applies.
+
+
+"WF_VScale_Mode" Specifies mode of scaling: 
+
+    0: scaling disabled
+    1: (default) keeps segment hold time and whole total segment width constant, slew rate changes.
+    2: keeps slew rate constant, segment hold time changes. Keep total segment width and whole WF duration constant. 
+
+This parameters can be in [DefaultParameterValues] section only.
+
+If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+
+-------------------------------------------------------------------------------------------------
+    Setting head temperatures
+-------------------------------------------------------------------------------------------------
+
+Ricoh RG5 head has a thermistor and a heater inside. HDC/HMB can control head temperature.
+It is possible to specify head target tempearture by using "HeadTargetTemperature" parameter in a config file.
+This parameter can be in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+Each head can have its own target temperature. 
+
+
+Important: HT_Ricoh_Gen5 head type has several sub-types (see "ConfigParameters.txt")
+Previously there was no difference between them from tempearture control point of view.
+But recent specs update from Ricoh specified max. head temperature 60C for Gen5, Gen6 sub-types and 50C for Gen5S.
+Also, Gen5S heating up speed is limited according to new specs.
+This means that target temperature 55C is valid for Gen5, but if this value is set for Gen5S variant, Meteor 
+will log an error and will limit max. temperature to 50C.
+
+A bit more technical information abour Gen5S temperature control:
+    * max temperature is 50C
+    * heat up rate is 0.1C/sec  for the temperature range [15..45C]    
+    * heat up rate is 0.05C/sec for the temperature range [46..50C]
+    So, heating the head from 20C to 45C will take about 250 seconds (4..5 minutes). 
+    For standard 24V heater supply max. Gen5S heater power is limited to about 7..8 Watts by firmware in HDC controller.
+
+
+    --------
+    Configuration example. 2 HDCs per PCC, 1 heads per HDC, 4 JAs per head:
+
+
+    [Ricoh_Gen5] ;-- "head" section
+    Waveform1 = "Waveform\Ricoh\RG4_RG5\SampleRG5Waveform.mrw"
+    Waveform2 = "Waveform\Ricoh\RG4_RG5\SampleRG5Waveform.mrw"
+    Waveform3 = "Waveform\Ricoh\ValidWaveform21v.mrw"
+    Waveform4 = "Waveform\Ricoh\Bipolar_singlepulse_17p5V.mrw"
+    Waveform5 = "Waveform\Ricoh\GEN5_Later_2pulse_16p5V.mrw"
+    Waveform6 = "Waveform\Ricoh\ValidWaveformWithGreyscale4.mrw"
+
+    [DefaultParameterValues]  ;--- Global system default settings
+    WaveformFileIdx       = 1       ; All heads on every PCC will use working waveform:  "SampleRG4Waveform.mrw"
+    TickleWaveformFileIdx = 3       ; All heads on every PCC will use tickling waveform: "ValidWaveform21v.mrw"   
+    HeadTargetTemperature = 30.1    ; All heads on every PCC will use 30.1C target temperature
+
+
+    [HeadDriver1:1]                 ;-- HDC level
+    WaveformFileIdx       = 2       ; Whole Head on HDC1 will use WF index2
+    TickleWaveformFileIdx = 0       ; Whole Head on HDC1 won't use tickling WF
+    HeadTargetTemperature = 35.6    ; Target temperature for PCC:1, HDC:1, Head:1
+
+    [HeadDriver1:2]                 ;-- HDC level
+    HeadTargetTemperature = 39.0    ; Target temperature for PCC:1, HDC:2, Head:1
+
+
+    [Head1:1]                   ;--- Head level (overrides settings in [HeadDriver1:1] section)
+    WaveformFileIdx       = 1,4,2,3   ; working  WaveformID applied to JA1,JA2,JA3,JA4 for PCC:1, HDC:1, Head:1
+    TickleWaveformFileIdx = 0,0,4,5   ; tickling WaveformID applied to JA1,JA2,JA3,JA4 for PCC:1, HDC:1, Head:1
+    WF_VScale_Coeff = 1.2, 0.98, 1, 1 ; WF scaling coefficients applied to JA1,JA2,JA3,JA4 for PCC:1, HDC:1, Head:1
+    
+
+
+
+
+
+-------------------------------------------------------------------------------------------------
+    Getting real head /HDC temperatures
+-------------------------------------------------------------------------------------------------
+
+The real (measured) values of temperatures and some other parameters are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multiplied by 10
+TAppHeadStatus::Temperature1  -  Head temperature
+
+TAppHeadStatus::Temperature5  - HDC amplifier A temperature
+TAppHeadStatus::Temperature6  - HDC amplifier B temperature
+TAppHeadStatus::Temperature7  - HDC amplifier C temperature  
+TAppHeadStatus::Temperature8  - HDC amplifier D temperature
+
+
+TAppHeadStatus::HeadVoltage     - Amplifier input voltage, 10x scaled
+TAppHeadStatus::AbsHeadVoltage  - Amplifier current, ma
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

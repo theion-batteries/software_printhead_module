@@ -1,0 +1,46 @@
+=================================================================================================
+    Some information regarding "Force white data functionality" for Ricoh TH5241 head
+=================================================================================================
+
+It is possible to disable sending print data to a whole head or some parts of the head.
+It is done on FPGA level, so, it also affects spitting. I.e. It might be possible to 
+enable/disable ejecting ink for the whole head/HDC or individual nozzle rows.
+This functionality is very head-type specific. Some print heads support it, some not.
+
+To use it, an application should send SIG_FORCEWHITE to PrintEngine with some parameters.
+For general information about signals, see  "Params_Signals.txt" technical note.
+Some information on SIG_FORCEWHITE is also available in SDK documentation.
+
+
+--- Ricoh TH5241 specific part:
+
+API: PiSetSignal(uint32 SignalId, uint32 State)
+
+Signal: SIG_FORCEWHITE
+Parameters:
+
+
+    * SignalId:                        
+        Byte 3 - xAddr value: addresses the HDC part (see below)
+        Byte 2 - PCC Number [1..255]
+        Byte 1 - HDC Number [1..8] 
+        Byte 0 - 0x1A (SIG_FORCEWHITE code)
+
+    * State:  1  to disable printing (force white data for the objects selected by xAddr)
+              0  to enable printing. (disables force white for the objects selected by xAddr)
+
+
+    "xAddr" selects the HDC row (or whole HDC) to apply "force white data", as follows:
+        * if its value is 0, then WHOLE HDC (both heads, 2 nozzle rows each) are addressed    
+
+        * Bit0 set –  selects row A 
+        * Bit1 set –  selects row B 
+        * Bit2 set -  selects row C 
+        * Bit3 set -  selects row D 
+
+        * values > 0x0F are invalid
+
+--- Example:
+
+    SignalId = 0x0301011A, State=1 will cause disable printing on PCC:1, HDC:1, Head1 (both rows A&B)
+

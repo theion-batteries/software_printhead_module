@@ -1,0 +1,56 @@
+TranslatorSettings.txt
+----------------------
+
+The Meteor translator is the part of the Meteor PrintEngine which:
+
+- maps each row of pixels in an incoming raster image to a print head nozzle
+- adjusts the image according to the X separation between nozzle rows on the print head
+- adjusts for other print head parameters as necessary, for example the order in which the head receives print data
+
+This file lists the configuration file (.cfg) settings which are available for configuring the Meteor translator
+
+Quite often, these settings will not need to be changed from their default values.
+
+[Translator]
+MaxThreads = 0                      ; Limit the number of threads used by the translator
+                                    ; If zero, the maximum number of translator threads is the maximum number of concurrent CPU threads
+
+ProcessorAffinity = 0               ; Optional hexadecimal bitmask restricting the logical processors which the translator threads can run on
+                                    ; e.g. on an 8 core system, 0xF0 forces the translator threads to run on logical processors 4-8
+                                    ; If zero, the translator threads can run on any processor
+
+The fast translator is heavily optimised, which means there is a small risk of errors in some print modes
+
+If it appears that the translator is processing images incorrectly, the following test parameters can be
+used to reduce the optimisation level of parts of the translation process
+
+Please contact support@meteorinkjet.com to help investigate the problem if you need to use these parameters to correct print defects
+
+When printing very small images, better performance may be achieved by disabling the fast translator.  This is a trade off between
+the additional overhead in setting up the fast translator versus the amount of time spent processing; the point where it is
+better to disable the fast translator will vary depending on the PC spec and the size of the images.
+
+A few print heads, such as the QS_256, can be used at a sabre angle.  When a sabre angle is used, the fast translator is not available.
+
+
+[Translator]
+DisableFastTranslator = 0           ; Set to 1 to disable fast translation
+DisableSimdTranslator = 0           ; Set to 1 to disable SIMD translator processing
+DisableParallelTranslator = 0       ; Set to 1 to disable multi-threaded translation
+DisableSourceStitchMask = 0         ; Set to 1 to disable fast head stitching
+DisableExtendedSimdTranslator = 0   ; Set to 1 to disable non-aligned print line SIMD optimisations
+DisableReuseSegments = 0            ; Set to 1 to disable same-size image memory reuse optimisations
+
+[System]
+CmdBufSizeDwords = 15728640         ; Size of each PrinterInterface to PrintEngine print data buffer
+                                    ; This can be increased from the default of 60MB to accomodate larger images if required
+                                    ; Changing this parameter requires a restart of all Meteor software
+
+[Test]
+TestThreadedTranslator = 1          ; Legacy parameter, which enables multi-threaded translator processing when DisableFastTranslator = 0
+                                    ; This parameter will be removed in future versions of software
+
+[Test]
+TestImageTranspose = 1              ; Deprecated parameter, used to enable fast translation in Meteor versions v4.2 and earlier
+                                    ; This parameter should no longer be used
+

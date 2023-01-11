@@ -1,0 +1,81 @@
+=================================================================================================
+    Some information on setting head voltages for HSS (Xaar1001) head 
+=================================================================================================
+
+
+HSS (Xaar1001) head is made of 2 Nozzle Rows or Jetting Assemblies (JAs). Each JA is driven by 8 ASICs and
+each ASIC has its own driving voltage.
+Thus, whole head has 16 voltages that can be adjusted.
+
+----
+
+Every ASIC voltage is calculated as follows:
+
+VASIC = "HeadVoltage"   +  // this is a global voltage. (20.0V by default)
+        "VOffset"       +  // this is a "offset" for individual JA (0.0V by default) 
+        "PTrim"         +  // this is an individual ASIC voltage trim (0.0V by default)   
+        "VOffset EEPROM"+  // this is a "offset" for individual JA read from head EEPROM (if configured, needs HUT_VOFFSET or HUT_PTRIM)         
+        "PTrim EEPROM"     // this is an individual ASIC voltage trim read from head EEPROM (if configured, needs HUT_PTRIM)         
+
+---------------
+-- config file settings:
+
+The simplest way to specify head voltage is use config file.
+Global setting: "HeadVoltage" in [HSS] section. Default value: 20.0V
+
+It is not possible to adjsut individual ASIC voltages from the config file.
+Instead it is possible to use either adjustments written in head EEPROM or supplied by user or both.
+N.B using head EEPROM values should be explicitly enabled by CCP_USE_TRIM command.
+Following commands apply:
+
+
+---------------
+
+CCP_HSS_HEAD_VOLTAGE
+    Overrides global "HeadVoltage" value from the config file.
+
+    addressing: 
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+
+    value: 0         - resets "HeadVoltage" for the given PCC:HDC to the default values from config file
+           otherwise - this is 10x scaled voltage (100mV units) to set for the given Pcc:HDC. (E.g. "283" -> 28.3V)
+     
+---------------
+CCP_VOFFSET
+    Allows to specify VOffset for the head "half" or JA. 
+    addressing: 
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * ANum   - 1 or 2 specifies head "half"
+
+    value: signed, 10x scaled voltage (100mV units) that specifies VOffset (E.g. "-12" -> -1.2V)
+
+---------------    
+CCP_PTRIM
+
+    Allows to specify voltage trim for the individual head ASIC
+    addressing: 
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * ANum   - [1..16] specifies ASIC number within the head
+
+    value: signed, 100x scaled voltage (10mV units) that specifies voltage trim (E.g. "137" -> 1.37V)
+
+
+---------------    
+CCP_USE_TRIM
+    Specifies wether to use adjustment values from head EEPROM
+ 
+    addressing: global (PccNum, HdcNum, ANum ignored)
+    value:
+
+        HUT_NONE    = 0  Do not use trim values from EEPROM
+        HUT_SCLK    = 1  Use only the SCLK value from EEPROM
+        HUT_VOFFSET = 2  Use VOFFSET values from EEPROM
+        HUT_PTRIM   = 3  Use VOFFSET and PTRIM values from EEPROM
+
+
+
+
+

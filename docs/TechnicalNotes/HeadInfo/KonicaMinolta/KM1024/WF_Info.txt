@@ -1,0 +1,140 @@
+
+=================================================================================================
+    
+Some information on the waveform files for Konica Minolta KM1024 head
+
+=================================================================================================
+
+General information about WF file format.
+According to the heads specs, waveforms should look as follows:
+
+
+
+  <-T2->                        <-T2->
+  +----+                        +----+
+  |    |                        |    |
+  |    |                        |    |
+  |    |                        |    |
+ -+    +------------------------+    +---
+  .                             .
+  .    +----------+             .    +----
+  .    |<-- T1 -->|<-- THold -->.    |
+  .    |          |             .    |
+ ------+          +------------------+
+  .                             .
+  .<---   waveform pulse    --->.
+
+
+Where:
+    T2 is VH2 pulse length (us), 
+    T1 is VH1 pulse length (us), 
+    THold is time from T1 falling edge to the next drop period begin (T2 raising edge).
+
+    * Note that in head specs drawings T1 corresponds to VH2 pulse, while here for consistency with 
+      KM1800i and KM1024i T1 is for VH1 and T2 is for VH2.
+
+
+
+T2+T1+THold make a "waveform pulse" that actually ejects a drop of ink.
+It is possible to define from 1 to 7 such pulses in the waveform file. Each pulse can have individual T1, T2 and THold times. 
+
+Waveform file contains information about pulse timings only. Voltages VH2, VH1 specified in Meteor
+configuration file. It can be done on PCC, HDC, head or even head-side basis. I.e. every individual head side can have
+its own waveform file + all the voltages and voltage adjustment coefficients.
+
+
+=================================================================================================
+Waveform file format
+=================================================================================================
+
+Section "generic" should contain head type (KM1024) and WF file version (only v1 currently supported)
+e.g:
+
+[generic]
+HeadType= KM1024 ; head type
+Version = 1
+
+It might be a "Bpp" key in this section as well, it is used by waveform editor and doesn't affect
+anything.
+
+
+Then there should be 1 to 7 sections that describe WF pulses: [Pulse0]...[Pulse6]. Pulse numbers 0..6 should be 
+sequential. I.e. the sequence [Pulse0] [Pulse1] [Pulse3] is not allowed.
+Each Pulse section describes one WF pulse in therms of T1, T2 and THold.
+E.g:
+[Pulse0]
+T2 = 2.3 	;-- VH2 pulse length, us
+T1 = 4.7 	;-- VH1 pulse length, us. if not specified, T1 assumed 2*T2
+THold = 1.1	;-- hold time after T2 and T2, us
+
+
+* Waveform constraints:
+
+- Waveform time unit is 25ns, so, any of the T2, T1, THold can't be less than 0.025us
+- Max. Value for these times currently is 65536*25ns = 1638us
+- VH1 must be in range [4.0, 24.0] volts
+- VH2 must be in range [4.0, 24.0] volts
+- VH1 must be less than VH2
+
+
+=================================================================================================
+Setting Waveform voltages
+=================================================================================================
+
+As mentioned above, waveform file specifies timing information only.
+Print head voltages (VH2, VH1) and some adjustments need to be set in Meteor configuration file. 
+
+Keys related to the head voltages:
+
+WF_VH2          VH2 voltage, volts
+WF_VH1_A        VH1 voltage, volts 
+WF_VScale_Coeff if value specified [0.5, 1.5], then VH2 will be multiplied by it.
+
+This heads is considered as having 2 JAs: JA0 and JA1 (left and right sides in heads data sheet terminology)
+So, all mentioned above voltage parameters can be applied separately for "left" and "right" sides of the head.
+See "DefaultKM1024_PccE.cfg" config file for example.
+
+
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages and temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    Head1 temperature 
+TAppHeadStatus::Temperature2    Head2 temperature
+TAppHeadStatus::Temperature3    HDC PSU1 temperature 
+TAppHeadStatus::Temperature4    HDC PSU2 temperature
+
+
+
+--- Head voltages are in volts multipiled by 100
+TAppHeadStatus::Voltages[0]     Head1 VH1L
+TAppHeadStatus::Voltages[1]     Head1 VH1R
+TAppHeadStatus::Voltages[2]     Head1 VH2L
+TAppHeadStatus::Voltages[3]     Head1 VH2R
+
+TAppHeadStatus::Voltages[4]     Head2 VH1L
+TAppHeadStatus::Voltages[5]     Head2 VH1R
+TAppHeadStatus::Voltages[6]     Head2 VH2L
+TAppHeadStatus::Voltages[7]     Head2 VH2R
+
+
+
+
+
+
+
+
+
+
+
+
+
+

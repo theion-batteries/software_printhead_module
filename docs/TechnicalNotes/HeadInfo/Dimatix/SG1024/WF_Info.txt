@@ -1,0 +1,240 @@
+=================================================================================================
+Some information regarding waveforms for Dimatic SG1024 ("Starfire") heads
+=================================================================================================
+
+SG1024 (Starfire) head physical configuration:
+
+    * HDC drives 1 head
+    * each head has 8 nozzle rows: Row[1,2], Row[3,4], Row[5,6], Row[7,8]. 
+        Rows[1,2, 3,4] are grouped to make one head "half" and Rows[5,6, 7,8] make another head "half"
+        So, each half of the head can be used to print individual colour.
+
+
+--- Waveform files
+
+Originally SG1024 head used *.mqw files to describe the waveform. This file structure is internal to Meteor.
+Recently SG1024 head started to support an improved ini-style WF files format; such WF files usually have *.txt 
+extension.
+
+
+General information about *.txt WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+
+
+*   Max. total number of segments in a whole WF is 31; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+*   Each Pulse has a 4-bit GreyLevel mask associated with it (Max BPP value is 2).  
+    Every bit in the GL mask byte is set if this WF pulse will be used to eject ink for a particular 2BPP pixel data.
+    For a binary waveform (printing 1BPP) the GL mask is usually 0x0E
+
+*   Also, HDC-Q requires that ALL waveforms need to have the same number of pulses. This includes
+    tickling waveforms if they are used.
+
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                   .
+         .    .--     .      .
+         .   /.  \____.__    .
+         .  / .       .   \  .
+         .-/  .       .     \.
+         .    .       .      .
+           S0     S1     S2
+
+
+Waveform constraints:
+ * 1..8 pulses per Waveform, 2..8 segments per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same voltage: 0 Volts.
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * absolute Min & Max voltages are properties of the hardware and must be in range: [1...141] volts 
+ * Hold time in general can't be < 50ns and > 4096*50ns. 
+    Also it is required hold time for the segment with slew rate > 0 to be min. 50ns, 
+    hold time for the segment with slew rate < 0 to be min. 500 ns and the 0V hold time for the very last 
+    segment in the WF to be min. 2000 ns.
+
+ * All waveforms assigned to "head half" Rows[1,2, 3,4] or Rows[5,6, 7,8] must have the same number of pulses.
+    Basically, all nozzle rows withing one head "half" can be assigned the same WF file noly. 
+
+
+
+
+
+----------------------- selecting head waveforms
+
+
+
+=== Legacy way:
+
+By default the waveform selected in the SG1024 config file applies to whole head, or to all 8 nozzle rows.
+It is done by specifying "WaveformID" parameter in  [Starfire] section, like:
+
+    [Starfire]
+    WaveformID = 3 ;-- selects WF id==3 for the whole system
+
+
+Tickling waveforms are not supported.
+
+It is possible to assign a working waveform index to PCC:HDC:Head:JA system using PiSetParam() API by sending 
+CCP_HEAD_WFILE_EX command. 
+
+"JA" in this case means "Head Half". JA1 is made of Rows[1,2, 3,4] and JA2 is made of Rows[5,6, 7,8]
+I.e. it is possible to assign different waveforms only to head halves;
+Rows[1,2, 3,4] must have the same WF and Rows[5,6, 7,8] must have the same WF. 
+On the other hand each individual nozzle row's WF can be slightly scaled, see "Waveform scaling".
+
+CCP_HEAD_WFILE_EX command has followig arguments:
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - "Head half" number [1..2]
+     * Value  - WF file index.  
+        
+    There are special values for these parameters: 
+     - If "aNum" is 0, then ALL nozzle rows within the head will be addressed (e.g. for setting the same WF index for ALL nozzle rows) 
+
+
+
+=== New way:
+
+It is now possible to assign working/tickling waveforms/WF scaling coefficients/
+to the selected PCC:HDC:Head:Nozzle row by specifying parameters in Meteor config file and using SetParamEx() API.
+
+Waveforms configuration for this scenario:
+
+    * Waveforms data is stored in WF files, e.g. "SampleSg1024Waveform.mqw"
+    * These file names/paths are listed in "head section". e.g [Starfire]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+    * "Tickling" waveform is selected by "TickleWaveformFileIdx" parameter, like "TickleWaveformFileIdx = 2"
+        Its default value is 0, which means "not used". Also note that in order to use tickling, it needs to be 
+        explicitly enabled by using "Tickle=1" key in [System] section.
+
+    Configuration example:
+
+    [Starfire] ;-- "head" section
+    Waveform1 = ".\Waveform\Dimatix\SG1024\SampleSg1024Waveform.mqw"        ;-- working WF1  
+    Waveform2 = ".\Waveform\Dimatix\SG1024\SampleSg1024Waveform2.txt"       ;-- working WF2   
+    Waveform3 = ".\Waveform\Dimatix\SG1024\Sg1024_TickleWaveformSample.txt" ;-- tickling WF
+
+    [DefaultParameterValues]     ; --- Global default settings
+    WF_VScale_Coeff        = 1.0 ; Waveform voltage scaling coefficient. global value for the whole system
+    WaveformFileIdx        = 2   ; Global default value, use Waveform2 for the whole system by default
+    TickleWaveformFileIdx  = 0   ; Don't use tickling waveforms
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform:  "SampleSg1024Waveform.mqw""
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "Sg1024_TickleWaveformSample.txt"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1,1,1, 2,2,2,2 ;-- working  waveforms for PCC:1, Head1, JA1..JA8 respectively
+    TickleWaveformFileIdx = 0,0,0,0, 3,3,3,3 ;-- tickling waveforms for PCC:1, Head1, JA1..JA8 respectively
+
+    WF_VScale_Coeff = 1.1, 1.2, 1.3, 1.4,  1.21, 1.22, 1.23, 1.24     ;-- WF scaling coefficients for PCC:1 Head:1, JA1..JA8 respectively
+
+
+Note that the example above specifies waveforms down to the JAs level. The head has 8 JAs, so, it is required to specify
+list of 8 values in [HeadX:Y] section, one value per JA. But as it was mentioned above, all JAs within head "half" 
+must use the same waveform. 
+So, head1 "half1" will use working WF with index1 and tickling WF with index0(no tickling), and "half2" will use 
+working WF with index2 and tickling WF with index3.
+Any attempts to specify different WF for JAs within one head "half" will result in error during head initialisation. 
+E.g this assignment is invalid: "WaveformFileIdx       = 1,2,1,1, 2,2,2,3"
+The same principle applies when using SetParamEx() API.
+
+
+Also, mixing legacy  "WaveformID" parameters from [Starfire] section and "WaveformFileIdx" one from 
+[DefaultParameterValues] is not recommended, because this can lead to confusion. Any attempt to do this
+will result in error message.
+
+
+
+
+----------------------- Waveform scaling
+
+It is possible to scale each individual nozzle row's WF using a scaling coefficient.
+"Scaling" is just multiplying WF voltage by some coefficient before sending data to HDC DAC.
+Wf Scaling preserves slew rate, but changes pulse hold time (whole pulse and waveform duration doesn't change).
+
+Waveform scaling can be applied any nozzle row individually.
+It is possible to specify WF scaling coefficient by following means:
+
+    * specify coefficients in the Meteor config file 
+    * using SetParamEx() API to set CPEX_WF_VScaleCoeff parameter
+    * using PiSetParam() API to set CCP_V_ADJUST_EX parameter (legacy way, not recommended for future use).
+      Internally this is mapped to setting CPEX_WF_VScaleCoeff parameter anyway.
+
+
+--- using config file.
+    "WF_VScale_Coeff" parameter specifies WF scaling coefficient. It can be in a range[0.5..1.5]. 
+    This parameter can be placed in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+    If due to scaling WF voltages go out of valid range, then error message is logged (on StartJob) and waveform is ignored.
+    "DefaultStarfire_PccE.cfg" config file has an example of this parameter usage.
+
+
+--- using SetParamEx() API and CPEX_WF_VScaleCoeff parameter
+    This method can be used to change WF scale coefficient dynamically.
+
+
+
+--- PiSetParam() API and CCP_V_ADJUST_EX:  
+
+    This is the legacy way of WF scaling and it is not recommended for using used in future applications.
+    It is much simpler to use Meteor config file for static settings and CPEX_WF_VScaleCoeff parameter for dynamic 
+    changes
+
+API: PiSetParam(), parameter:
+CCP_V_ADJUST_EX = 0x0000003C, // HT_STARFIRE: set waveform voltage scaling for SG1024 nozzle row.  
+
+
+CCP_V_ADJUST_EX command has followig arguments:
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - JettingAssembly (JA) number [1..8]
+     * Value  - scalig coefficient, multiplied by 1000; i.e. 1000 => 100% of the original voltage, 
+                1200 => 120% of the original voltage, 800 => 80% of the original voltage
+
+     There are special values for these parameters. 
+        - If both PccNum, HdcNum and "aNum" are 0, then ALL heads in the system will be addressed.
+        - If HDC Number and "aNum" is 0, then all nozzle rows on all heads aon the given PCC will be addressed.
+        - If "aNum" is 0, then ALL nozzle rows on HDC will be addressed 
+            (e.g. for setting the same voltage scaling coefficient for ALL nozzle rows)
+
+
+
+
+ 
+
+
+
+
+

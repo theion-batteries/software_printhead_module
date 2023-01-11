@@ -1,0 +1,349 @@
+
+    As mentioned earlier, a typical Meteor system configuration looks as follows and for addressing parts of this
+    hierarchy "PE Address" concept is used.
+
+
+
+            +-----------------------------------------------------------------+
+            |                                                                 |
+            | PCC 1                                                           |
+            |            1     2     3     4     5    6    7    8             |
+            +------------#-----#-----#-----#-----#----#----#----#-------------+
+                         |                                      |
+                         |                                      |
+            +--------------------------+           +--------------------------+ 
+            |          HDC 1           |           |          HDC 8           | 
+            |                          | ........  |                          | 
+            |    1    2    3     4     |           |    1    2    3     4     | 
+            +----#----#----#-----#-----+           +----#----#----#-----#-----+ 
+                 |    |    |     |                      |    |    |     |       
+                 |               |                      |               |       
+                 |               |                      |               |
+                 |               |                      |               |       
+            +- head 1 -+    +- head 4 -+           +- head 1 -+    +- head 4 -+ 
+            |          |    |          |           |          |    |          | 
+            | JA1  JA2 |    | JA1  JA2 |           | JA1  JA2 |    | JA1  JA2 | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |....|  o    o  |           |  o    o  |....|  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |          |    |          |           |          |    |          | 
+            +----------+    +----------+           +----------+    +----------+ 
+
+    
+    So, every part down to individual JA has its own adddress. And it is also possible to associate 
+some parameters with the addressable objects. Examples of such parameters along with the addressing scope:
+
+    - Waveform file index. Integer value, usually [1..100]. Used to select concrete waveform from the list of WF files.
+    Some head types allow assigning individual waveforms to diferent JAs, some head types allow assigning waveforms
+    for the whole head. Some head types don't have loadable waveforms, so, they don't need such parameter.
+    
+    - Head target temperature. Real number, like 45.6 degrees C. Some head types don't support such things, others
+    allow setting target temperature for whole head only (individual JAs usually well thermally coupled, so, using
+    individual JA temperature doesn't make much sense). sometimes it makes more sense to specify target temperature 
+    for all heads on the same HDC, because they can be mounted on the same printbar.
+
+A set of supported parameters is specific to the concrete head type. E.g. some head types support temperature-related
+parameters, some don't. An attempt to use parameter that is not supported results in error message.
+
+
+--- PeParameters and their values.
+
+So, PE Parameter ("PE" stands for "PrintEngine) is defined by its following properties:
+
+    * identifier: just a number in decimal or in hex. Such a number usually defined by constants that have names starting
+                  with CPEX_ prefix. For example, "Meteor.cs" or "Meteor.h" define a bunch of public CPEX_* constants.
+                  For example, CPEX_WF_FileIdx has value 0x11C or 284 in decimal.
+                  Sometimes in log files or in documentation it is possible to run into parameters' names starting with 
+                  KPEX_* prefix, like "KPEX_WF_FileIdx". This is just the same parameter Id, but internal to the PrintEngine, 
+                  for the user its meaning is the same as CPEX_*.  
+
+
+    * value:      parameter value, like 1, 10 or -12.346. From user's point of view PeParameter's value can be a 32-bit integer 
+                  or a real number with fixed decimal point. Internally all values are fixed-point, 
+                  but integers are just fixed point values with scaling factor 1. 
+                  Currently fixed point values can have following scaling factors: 1,10,100,1000,10000.
+                  It means that some real numbers can have following representations:
+                  1.5   as 15:10 or 150:100 or 1500:1000 etc.
+                  2.63  as 236:100 or 2360:1000 or 23600:10000
+                  3.456 as 3456:1000 or  34560:10000
+                  0.023 as 23:1000 etc.  
+                  
+--- PeParameters and PeAddressing.
+
+PeParameters usually come with PeAddress attached. This allows setting / getting parameters associated with different
+parts of Meteor system hierarchy (see the figure at the top).
+
+For example, setting parameter id:"CPEX_WF_FileIdx" to value:4, address:[12-2-3-1] means that PCC:12, HDC:2, Head:3, JA:1 will be 
+assigned waveform file index 4 (very simplified picture).
+
+Using fully specified address [12-2-3-1], like in example above is straightforward. More interesting use case is: "I want to
+set WF file index to 12 for all heads/JAs on PCC:2, HDC:1". In this case it is possible to use following PeAddress:
+[2-1-0-0] or [2-1-*-*] and value 12 for parameter "CPEX_WF_FileIdx". For even broader addressing you can use addresses
+like [2-*-*-*] or even [*-*-*-*].
+
+The most common use case is when we set some parameter's "global default value" for the whole system, addr:[*-*-*-*] and
+then selectively set different values for smaller subtrees of the system.
+
+For example:
+
+   1. Set "CPEX_WF_FileIdx" to 1 for [*-*-*-*]. All PCCs, all HDCs, all Heads and all JAs will have WF file index == 1
+   2. Set "CPEX_WF_FileIdx" to 2 for [1:2:*:*]  All heads, All JAs on PCC:1, HDC:2 get WF file index == 2, the rest keep value 1
+   3. Set "CPEX_WF_FileIdx" to 3 for [1:2:3:*]  All JAs on  PCC:1, HDC:2 Head:3, get WF file index == 3, All other heads/JAs
+                                                on PCC:1, HDC:2 keep WF file index == 2,the rest keep value 1 
+   4. Set "CPEX_WF_FileIdx" to 4 for [1:2:3:1]  PCC:1, HDC:2, Head:3, JA1 get WF file index == 4, the rest is not changed.
+
+In fact, all parameters registered within PrintEngine for a specific head type have some "global default" value set for 
+address [*-*-*-*]. 
+
+
+So, you can set some parameter value for a part of a system tree using not fully specified address. 
+But to read some parameter value you alway must have a fully specified address, like [12-2-3-1]. An attempt to read
+parameter for [12-2-3-*] doesn't make sense, because this parameter for [12-2-3-1] and [12-2-3-2] can have different values.
+
+
+--- PeParameters validation.
+This is an internal PrintEngine mechanism and it is not available to the user. Some parameters have a limited range of
+valid values. For example, waveform file index (parameter "CPEX_WF_FileIdx") usually is in range [1..100], but sometimes 
+in [0..100], temperature parameters are usually limited and so on. Also, every parameter has some default value.
+Every attempt to set a parameter value passes trough validation. PrintEngine checks if the value is being set is valid, and
+if not, rejects the operation and logs an error.
+
+
+--- PeParameters set/get API
+Many of the registered parameters have their values set during Meteor config file parsing (this described further on).
+There is a user API that can be used to set/get PeParameters values.
+The most interesting API functions are: PiSetParamEx() and PiGetParamEx(), they exist for both C++ and C# interfaces.
+These functions' parameters are very well described in "PrinterInterfaceCLS.cs" file.
+
+
+User application can call PiSetParamEx() and PiGetParamEx() functions, and TestApp is one of such applications. 
+It has a relatively convenient user interface for this API and the user can try 
+playing with setting/getting parameters and see what is going on. TestApp interface is covered in a separate topic.
+
+--- PeParameters and PrintEngine log
+
+Sometimes it is very useful to see which parameters are being set/get, which addresses they use and so on.
+In order to have this information in Meteor log, it is necessary to enable "ConfigEngine" logging category. This can be 
+done either in Monitor app (SetUp tab) or by editing Meteor config file. It is enabled by default in Debug builds.
+"ConfigEngine" is a part of PrintEngine that is responsible for handling all PeParameters stuff.
+
+Some bits of log as an example (note that "internal" PeAddress representation is used here):
+
+[...]
+CConfigEngine::SetParamDefValue(Id:0x11c 'WaveformFileIdx', DefValue:1, Scope:[ff:ff:ff:ff])
+CConfigEngine::SetFpParam(00:00:00:ff, Id:0x11c 'WaveformFileIdx', Val:1)
+CConfigEngine::SetFpParam(00:00:00:ff, Id:0x120 'TickleWaveformFileIdx', Val:0)
+CConfigEngine::SetFpParam(00:00:00:00, Id:0x11c 'WaveformFileIdx', Val:1)
+CConfigEngine::SetFpParam(00:00:00:01, Id:0x11c 'WaveformFileIdx', Val:1)
+
+[...]
+CConfigEngine::GetFpParam(04:00:00:00, Id:0x11c 'WaveformFileIdx', DefVal:1) => 1
+
+
+----------------------------------------------------------------------
+--- PeParameters and corresponding keys in Meteor config file
+----------------------------------------------------------------------
+
+Hierarchical parameters addressing (described earlier as PeAddressing) fits nicely to the way Meteor architecture 
+is defined by sections and keys in the config file. There is a problem though that Meteor config file doesn't
+support nested sections, so there is no straightforward way to define [PCC]->[HDC]->[Head]->[JA] configuration.
+Also, it would be tedious to specify explicitly all registered parameters for all objects from PCC down to JA.
+So, some shorcuts, like linking sections by names and parameters overriding were made to simplify *.ini file structure.
+
+Inside PrintEngine PeParameters have "config name" property, which is a ini file key name, like "WaveformFileIdx", 
+"HeadVoltage" etc.
+
+
+As mentioned earlier, every head type has a set of specific parameters. These parameters are registered within PrintEngine,
+and every parameter has some hardcoded default value and a validator. This is the topmost level of hierarchy, it is 
+hidden from the user. This level ensures that even if no parameters are specified in a config file at all, they will have
+some more or less sensible values.
+
+-----------------------
+-- [DefaultParameterValues] section
+-----------------------
+The next level of parameter hierarchy is defined in following section: [DefaultParameterValues]. 
+This section defines parameter values for WHOLE system hierarchy. I.e. for all PCCs/HDCs/Heads/Jas. 
+So, this corresponds to PeAddress: [*-*-*-*]. Parameter values from this section override default hardcoded values
+mentioned above.
+
+For example:
+
+[DefaultParameterValues]
+;-- by default hardcoded WaveformFileIdx value is 1. 
+;-- but here we redefine it for the WHOLE system as 3
+;-- So, this section OVERRIDES default hardcoded parameter values.
+;-- All following sections in the hierarchy will inherit this parameter value, and can OVERRIDE it on its level.
+WaveformFileIdx = 3 
+
+
+Thus, if some parameter value is specified in [DefaultParameterValues] section, then the whole system hierarchy 
+[PCC]->....[JA] will inherit this value.
+
+-----------------------
+--- [ControllerX] section
+-----------------------
+
+Where 'X' is the Print Controller (PCC) number [1..255]. 
+This section contains parameters:
+    * that are explicitly specific to PCC. E.g. "Master = 1" 
+    * that can override values from the hierarchical section above ([DefaultParameterValues]) for all HDCs connected to PCC:X and
+      below. Thus, PeParameters in this section have PeAddress [X-*-*-*]
+
+Because [ControllerX] section describes parameters for whole PCC and PCC drives [1..8] HDCs, PeParameters must 
+be provided in the form of a comma-separated list, each value in this list is for the corresponding HDC on this 
+particular PCC. So, the list lenght depends on a maximum number of HDCs that this PCC type drives. 
+In the case of PDC (will be described later) PCC can be hardcoded to drive only 2 HDCs, for example.
+This isn't very straightforward, but simplifies config file section structure. 
+
+In the following example we override WaveformFileIdx parameter, and we need to have a list of 8 
+values, each one for HDC1..HDC8 on this PCC. This isn't a real-life example, just to demonstarate the principle.
+
+[Controller1]
+;-- in the example above whole system gets WaveformFileIdx = 3 (defined in [DefaultParameterValues])
+;-- but here we override this parameter values for ALL HDCs on PCC1
+WaveformFileIdx = 4,5,6,7,1,1,1,1 ;-- parameter values for PCC:1 -> HDC1..HDC8 respectively
+
+As the result, ALL Heads/JAs on PCC:1, HDC:1 will have WaveformFileIdx=4, 
+ALL Heads/JAs on PCC:1, HDC:3 will have WaveformFileIdx=6 and so on.
+
+
+-----------------------
+--- [HeadDriverX:Y] section
+-----------------------
+Where 'X' is the PCC number [1..255] and 'Y' is the HDC Number [1..8]
+
+This section contains parameters:
+    * that are explicitly specific to the HDC, "Yoffsets", for example
+    * that can override values from the hierarchical section above ([ControllerX]) for all Heads connected to PCC:X, HDC:Y
+      and below. Thus, PeParameters in this section have PeAddress [X-Y-*-*]
+
+
+Because [HeadDriverX:Y] section describes parameters for whole HDC and HDC drives [1..8] heads, PeParameters must 
+be provided in the form of a comma-separated list, each value in this list is for the corresponding Head on this 
+particular HDC. So, the list lenght depends on a maximum number of Heads that this HDC type drives. 
+
+Assume that our HDC drives 2 heads.
+In the following example we override WaveformFileIdx parameter, and we need to have a list of 2 
+values, each one for Head1 and Head2 on this HDC. 
+
+[HeadDriver1:1]
+;-- in the example above whole system gets WaveformFileIdx = 4 (defined in [Controller1])
+;-- but here we override this parameter values for ALL Heads on PCC1:HDC1
+WaveformFileIdx = 8,9 ;-- parameter values for PCC:1, HDC:1 -> Head1 and Head2 respectively
+ 
+As the result, ALL JAs on PCC:1,HDC:1,Head:1 will have WaveformFileIdx=8, 
+ALL JAs on PCC:1,HDC:1,Head:2 will have WaveformFileIdx=9.
+
+
+-----------------------
+--- [HeadX:Y:Z] section
+-----------------------
+Where 'X' is the PCC number [1..255] and 'Y' is the HDC Number [1..8] and 'Z' is head number [1..8]
+
+This section contains parameters that override values from the hierarchical section above ([HeadDriverX:Y]) 
+for all JAs on PCC:X, HDC:Y, Head:Z. Thus, PeParameters in this section have PeAddress [X-Y-Z-*]
+
+Because [HeadX:Y:Z] section describes parameters for the whole head, that can be made of several JAs, PeParameters must 
+be provided in the form of a comma-separated list. Each value in this list is for the corresponding JA on this 
+particular head. So, the list lenght depends on a maximum number of JAs defined for this particular head type. 
+
+
+There are some weird cases, when the head is defined as having multiple JAs, but some of the parameters must be the same
+for a particular JA set. Example is SG600 head. It is defined as having 6 JAs, each JA can have its own 
+"waveform scaling coefficient" , but JAs are groupped as (JA1,JA2,JA3) and (JA4,JA5,JA6) and only whole group can 
+have its individual waveform. In such a case user will have to ensure that parameters in the list are set correctly, and
+PrintEngine will check this as well.
+
+For example, SG600 head may have 2 different waveforms per head and 6 WF scaling coefficients, like so:
+
+[Head1:1:1]
+WaveformFileIdx = 1,1,1,           2,2,2;        ;-- JA1-JA3 have WfIndex = 1, JA4-JA6 have WfIndex = 2
+WF_VScale_Coeff = 0.9, 1.0, 1.1,   1.2, 1.3, 1.4 ;-- scaling coefficients for JA1..JA6 respectively
+
+
+
+Thus, as a general case, we have a hierarchical sections structure in the Meteor config file that looks as follows:
+
+    [DefaultParameterValues]  (whole system level and below)    PeAddr: [*-*-*-*]
+             |
+             V
+       [ControllerX]          (PCC level and below)             PeAddr: [X-*-*-*]
+             |
+             V
+      [HeadDriverX:Y]         (HDC level and below)             PeAddr: [X-Y-*-*]
+             |
+             V
+        [HeadX:Y:Z]           (Head level and below)            PeAddr: [X-Y-Z-*]
+
+
+PeParameter values specified in the section [HeadX:Y:Z] override values from [HeadDriverX:Y] and so on up to [DefaultParameterValues]
+This nice abstract concept, nevertheless, in a real world can have some specific exceptions.
+
+    * Some parameters are not "PeParameter" type, they are specific to particular section, like "Master" in [ControllerX] and
+        therefore can't be anywhere else and can't be overridden.
+    * [ControllerX] sections can have some parameters from [Encoder], for example. This is a dark heritage and a very 
+        specific use case
+    * Some PeParameters may be not applicable to some parts of the hierarchy, e.g. if the head has 1 JA, then it is likely 
+        that [HeadX:Y:Z] may not have some parameters. Another example: head temperature. It is usually specified for a 
+        whole head or whole HDC.
+    * Some special parameters, like Xoffsets, Yoffsets, Orientations. They can't be overriden. In most of the cases they are
+        defined only in [ControllerX], section. For some HDC/PDC types they are defined in [HeadDriverX:Y] only.
+
+
+
+-----------------------
+“PDC” concept and “Head index reduction”
+-----------------------
+
+In some configurations the system is designed to drive only one head per HDC (Samba for example). 
+In this case customers tend to see system set up as PCC driving a number of “Heads”. 
+Moreover it is possible to have configuration when PCC is designed to drive only 1 HDC that can drive one or more heads.
+Such situation usually happens when the driver is in the form of "PDC", which means that PCC and PDC are situated
+on the same driver board and implemented within one FPGA.2
+
+In order to make writing config Files easier (or more complicated, depending on  how you look at it), 
+it was decided to remove (reduce) HDCs/Heads indices from corresponding config file sections in the case when 
+only one HDC/Head can exist.
+
+It is simpler to show various config file sections hierarchy by examples.
+
+--- Standard configuration: PCC drives several HDCs, HDC drives several heads
+
+typical hierarchy: [ControllerX] -> [HeadDriverX:Y] -> [HeadX:Y:Z]
+
+
+
+
+--- PCC drives several HDCs, HDC drives 1 head only
+
+typical reduced hierarchy: [ControllerX] -> [HeadX:Y]
+
+
+[HeadDriverX:Y]  section is optional in this case and can be omitted unless the user wants to apply some setting 
+to a WHOLE head and not to individual head’s JAs. This may be useful for reducing parameter list length.
+nontypical: [ControllerX] -> [HeadDriverX:Y] -> [HeadX:Y]
+
+
+
+--- PCC drives 1 HDC, HDC drives 1 head only
+typical reduced hierarchy: [ControllerX] -> [HeadX]
+
+
+[HeadDriverX] section is optional in this case and can be omitted unless the user wants to apply some setting to WHOLE 
+head and not to individual head’s JAs. This may be useful for reducing parameter list length.
+nontypical: [ControllerX] -> [HeadDriverX] -> [HeadX]
+
+
+
+
+
+
+
+
+
+
+

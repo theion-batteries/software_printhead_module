@@ -1,0 +1,137 @@
+=================================================================================================
+Some information regarding Kyocera 1200RM head voltages / temperatures  
+=================================================================================================
+
+We currentlty assume that:
+
+    * KY1200RM head has 2 "halves" or Modules U1 and U2 in datasheet terminology
+    * Every module has 12 voltage-related parameters:
+        - "Reference voltage": [5.0..36.0] volts
+        - "Volatge gain":      [0.5..1.5] 
+
+Thus, in total there are 24 "Reference Volatges" and 24 "Voltage gain" values per single head.
+These parameters may be stored in head EEPROM (e.g. as a result of factory calibration).
+Meteor doesn't store any voltages in head EEPROM permanently, instead, they are loaded every time the head 
+is powered up.
+
+Nevertheless, on head power up all head original Ref.Voltages and VGain coefficients are read and can be
+retrieved by user application as a part of "Head EEPROM data", see "HeadEepromData.txt".
+
+--- Head voltages configuration:
+
+In the simplest case no voltage parameters are specified in Meteor congig file at all.
+In this case no VRef/VGain are sent to the head and it uses whatever is written in its EEPROM.
+Based on Meteor's experience, there is a posibility that a printhead EERPOMs can be corrupted,
+so, it is possibly makes sense to specify at least default VRef/VGain
+
+       
+There are 4 parameters that can be used for specifying VRef/VGain, they can be set either in Meteor config file or
+by using PiSetParamEx() API.
+
+They are:
+    KPEX_HeadVRef_U1:   U1 VRef, 12 values for U1_Fire0...U1_Fire11
+    KPEX_HeadVRef_U2:   U2 VRef, 12 values for U2_Fire0...U2_Fire11
+
+    KPEX_HeadVScale_U1: U1 VScale, 12 values for U1_Fire0...U1_Fire11 
+    KPEX_HeadVScale_U2: U2 VScale, 12 values for U2_Fire0...U2_Fire11
+
+
+    VRef values can be: 
+        0.0v or "not set". In this case this particular voltage e.g. U1_FIRE3 won't be sent to the head
+        5.0...36.0 volts value
+    
+    VScale values can be: 
+        0.0 or "not set". In this case this particular voltage e.g. U1_FIRE3 won't be sent to the head
+        0.5...1.5 value
+
+    Note that the head "Voltage Record" e.g. U1_FIRE3 (see specs) is made of both VRef and VScale. Thus,
+    it is not possible to have one of them explicitly specified and one "not set", either both VRef and VScale needs
+    to be specified, or both "not set".
+
+--- Specifying Head voltage parameters in a config file:
+
+Specifying VRef/VGain in [DefaultParameterValues] section sets them for the whole system, e.g:
+
+    ;---Global system default settings:
+    [DefaultParameterValues]
+
+    Head_VRef_U1    = 21.3  ;-- U1 VRef for ALL heads in the system
+    Head_VScale_U1  = 1.06  ;-- U1 VScale for ALL heads in the system
+
+    ;Head_VRef_U2   = 20.0  ;-- commented out, values are "not set"
+    ;Head_VScale_U2 = 1.0   ;-- commented out, values are "not set"
+
+
+Specifying VRef/VGain in [HeadDriverX] section overrides values from [DefaultParameterValues] and allows setting
+parameters for the WHOLE head of a particular board, e.g:
+
+    [HeadDriver1]
+
+    Head_VRef_U1   = 20.0   ;-- U1 VRef for the WHOLE head on PDC1
+    Head_VScale_U1 = 1.0    ;-- U1 VScale for the WHOLE head on PDC1
+
+    Head_VRef_U2   = 21.7   ;-- U2 VRef for the WHOLE head on PDC1
+    Head_VScale_U2 = 0.97   ;-- U2 VScale for the WHOLE head on PDC1
+
+If you need to set VRef/VScale for a particular head ASIC, then these parameters wiil have to be specified in 
+[HeadX] section, and parameter value list must have 12 values for Ux_FIRE0...Ux_FIRE11, e.g:
+
+    [Head1]
+
+    ;-- U1_Fire:       0     1     2     3     4     5     6     7    8    9    10    11
+    Head_VRef_U1    = 21.0, 21.1, 21.2, 21.3, 21.4, 21.5,  0, 21.7, 21.8, 21.9, 22.0, 22.1           
+    Head_VScale_U1  = 0.97, 0.98,  1.0,  1.1, 0.95, 1.12,  0, 1.134,0.98, 1.0,  1.11, 1.234 
+
+    Note that in this example VRef_U1_Fire6 and VScale_U1_Fire6 are set to 0, meaning "not set" and U1_FIRE6
+    record won't be sent to the head, resulting in original value from its EEPROM being used.
+
+
+
+=================================================================================================
+--- Setting Head temperature.
+
+    It can be set in the config file by "HeadTargetTemperature" key, which can be placed into [DefaultParameterValues], 
+    [ControllerX], [HeadDriverX] sections.
+    This parameter specifies head target temperature in degrees C. It should be in a range [0.0, 60.0]C, 
+    and the default value is 35.0C
+    
+    Note: This parameter probably doesn't make much sense due to the head self-heating capabilities.
+    Even being idle it consumes about 40 watts of power, thus requiring a water-cooler system instead of a heater.
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+There is a limted number of parameters that can be read from this type of head. 
+The most useful ones are: 
+    "heater seting value" or target temperature
+    "Heater" temperature, the head real temperature.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+    TAppHeadStatus::Temperature1 -> head target temperature.
+    TAppHeadStatus::Temperature2 -> head current (measured) temperature.
+
+    TAppHeadStatus::Temperature3 -> PSU Temperature 1
+    TAppHeadStatus::Temperature4 -> PSU Temperature 2
+    
+    TAppHeadStatus::Temperature5 -> Vcc1 current, ma
+    TAppHeadStatus::Temperature6 -> Vcc2 current, ma
+
+    TAppHeadStatus::Temperature7 -> Head "U1 status" register 
+    TAppHeadStatus::Temperature8 -> Head "U2 status" register 
+
+
+    TAppHeadStatus::Voltages[0] -> VIn voltage, 10x scaled
+    TAppHeadStatus::Voltages[1] -> VCC1 voltage, 10x scaled
+    TAppHeadStatus::Voltages[2] -> VCC2 voltage, 10x scaled
+
+
+
+

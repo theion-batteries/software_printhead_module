@@ -1,0 +1,119 @@
+------------------------------------------------------------------------
+Some notes regarding HDC-Q driving PQ512(Polaris) and QS256(Q-Class) heads
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+HDC-Q drives either one PQ512(Polaris) or two QS256(Q-Class) heads.
+PQ512 has 4 JAs, each QS256 head has 2 JAs. Thus, HDC-Q always drives 4 nozzle rows (JAs) 
+and JA has 128 nozzles, making 128*4=512 nozzles in total. 
+
+On the other hand, head/JA/nozzles layout is very different for PQ512 and QS256 heads.
+
+------------------------------------------------------------------------
+
+For PQ512 case HDC/head layout looks as follows: 1 head, 4 nozzle rows
+This head is made of 2 "Modules": Module1 and Module2.
+
+
+            Row1    Row2                Row3    Row4   <-- Physical numbering / offsets
+            0.0mm   1.016mm             8.0mm   9.016 mm
+            0pix    8pix                63pix   71pix
+            
+            --Module1--------------------Module2--      
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+             [........]                 [........]           
+             o        o                 o        o           
+             o        o                 o        o           
+             o        o                 o        o           
+            ---------------------------------------      
+
+
+HDC row:     3        1                 2        0     <--- (data slot index mod 4)
+
+            JA3      JA2               JA1      JA0    <--- (used in context of PrintEngine configuration)         
+
+                                                         
+Tick Offset  1        1                 0        0     <--- FORWARD offsets      
+Reg Nibble   1        1                 0        0     <--- REVERSE offsets      
+
+Note that legacy implementation supports only 2 TickOffset register nibbles: 
+0 for module1 and 1 for module2. This allows fine "Modules" X-position adjustments, but not
+Nozzle rows within one "Module".
+
+
+------------------------------------------------------------------------
+
+For QS256 case HDC/head layout looks as follows: 2 heads, 1 nozzle row per head, but this nozzle row
+is made of JA0, JA1 interlaced.
+
+
+           +- head 1 -+       +- head 2 -+        
+           |    O     |       |    O     |                 
+           |    X     |       |    X     |                 
+           |    O     |       |    O     |                 
+           |    X     |       |    X     |                 
+           |  ......  |       |  ......  |                  
+           |    X     |       |    X     |                 
+           |    O     |       |    O     |                 
+           |    X     |       |    X     |                 
+           +----------+       +----------+        
+            "Module1"           "Module2"   <--- "Module" concept here doesn't much sense
+
+
+             O        X                 O        X     <--- JA's Nozzle designator, see picture above.
+
+HDC row:     0        2                 1        3     <--- (data slot index mod 4)
+
+            JA0      JA1               JA0      JA1    <--- (used in context of PrintEngine configuration)         
+
+                                                         
+Tick Offset  0        0                 1        1     <--- FORWARD offsets      
+Reg Nibble   0        0                 1        1     <--- REVERSE offsets      
+
+
+Note that legacy implementation supports only 2 TickOffset register nibbles: 
+0 for module1 and 1 for module2. This allows fine "Modules" X-position adjustments, but not
+Nozzle rows within one "Module".
+Thus, it seems that using fine row adjustments doesn't make much sense here, because 
+it will be just moving head positions within the HDC.
+
+
+------------------------------------------------------------------------
+It seems that there is a variant of QS256 head intended to be used with ink recirculation.
+It has the same interface as QS256, but the nozzle layot is different: it is like one print module of PQ512, i.e
+nozzle rows are separated by 1.016mm       
+
+
+
+
+            Row1    Row2              Row1    Row2   <-- Physical numbering / offsets
+            0.0mm   1.016mm           0.0mm   1.016mm
+            0pix    4pix              0pix    4pix
+            
+           +-- Head1 --+              +-- Head2 --+
+           | O         |              | O         |
+           |          O|              |          O|
+           | O         |              | O         |
+           |          O|              |          O|
+           | [........]|              | [........]|
+           | O         |              | O         |
+           |          O|              |          O|
+           | O         |              | O         |
+           |          O|              |          O|
+           |           |              |           |
+           +-----------+              +-----------+
+
+
+HDC row:     0        2                 1        3     <--- (data slot index mod 4)
+
+            JA0      JA1               JA0      JA1    <--- (used in context of PrintEngine configuration)         
+
+                                                         
+Tick Offset  0        0                 1        1     <--- FORWARD offsets      
+Reg Nibble   0        0                 1        1     <--- REVERSE offsets      
+
+
+

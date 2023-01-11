@@ -1,0 +1,138 @@
+=================================================================================================
+    Some information on setting head temperature for RG4/RG5 heads
+=================================================================================================
+
+There are several ways of specifying/setting head target tempeartures:
+    * Legacy way (applies to HT_RG4 and HT_RG5 head types)
+    * "New" way, it applies to HT_RG5 head type only
+
+
+---
+Important: HT_RG5 head type has several sub-types (see "Gen5_Gen5S_Gen6.txt")
+Previously there was no difference between them from tempearture control point of view.
+But recent specs update from Ricoh specified max. head temperature 60C for Gen5, Gen6 sub-types and 50C for Gen5S.
+Also, Gen5S heating up speed is limited according to new specs.
+This means that target temperature 55C is valid for Gen5, but if this value is set for Gen5S variant, Meteor 
+will log an error and will limit max. temperature to 50C.
+
+A bit more technical information abour Gen5S temperature control:
+    * max temperature is 50C
+    * heat up rate is 0.1C/sec  for the temperature range [15..45C]    
+    * heat up rate is 0.05C/sec for the temperature range [46..50C]
+    So, heating the head from 20C to 45C will take about 250 seconds (4..5 minutes). 
+    For standard 24V heater supply max. Gen5S heater power is limited to about 7..8 Watts by firmware in HDC controller.
+    
+ 
+
+
+------------------------------------------------------------------------
+    Legacy way of specifying head target temperatures:
+------------------------------------------------------------------------
+
+The simplest way to set head target temperature for RG4/RG5 heads is to specify it 
+in the config file, [Head] section like:
+
+[RicohGen5]
+HeadTemperature  = 30.0   ; Target head temperature in degC (0.0 = disabled)
+
+This settings is applied to ALL heads in the system and is "global default" value.
+
+
+It is possible, but not very straightforward  to set target head temperature to any head individually using 
+CCP_HEAD_TEMP parameter.
+
+CCP_HEAD_TEMP addressing: It accepts following arguments to select PCC/HDC/Head:
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - meaning depends on RG4 or RG5 head
+    
+    There are special values for these parameters. 
+        - If both PccNum and HdcNum are 0, then all heads in the system will be addressed
+
+CCP_HEAD_TEMP command value:
+    
+     * if it is 0, then the heads addressed will receive target temperature from "global default" value (see config file).
+     * otherwise target temperature multiplied by 10 (e.g 438 corresponds to 43.8 degreesC)
+
+--- 
+HDC-R5: 
+
+It drives drives 1 head, so "aNum" parameter from CCP_HEAD_TEMP command is ignored.
+Also, there is no check that target temperature exceeds some maximum.
+
+--- 
+HDC-R4: 
+
+It drive 2 heads, each head has 2 JAs. 
+    
+    if "aNum"  parameter is 0, then all heads will be assigned given target temperature.
+
+    if "aNum"  parameter is 1 or 2, then Head1 will be assigned given target temperature.
+    if "aNum"  parameter is 3 or 4, then Head2 will be assigned given target temperature.
+
+
+
+------------------------------------------------------------------------
+    New way of specifying head target temperatures (for HT_RG5 only)
+------------------------------------------------------------------------
+
+HT_RG5 head type now supports a "new" way of setting head target temperature in a config file.
+
+It can use "HeadTargetTemperature" parameter in [DefaultParameterValues], [ControllerX] [HeadDriverX:Y] sections.
+"Old" parameter:"HeadTemperature " from [RicohGen5] section is still supported, but it is not recommended
+to mix old and new parameters.
+
+For example:
+    [DefaultParameterValues]
+    HeadTargetTemperature = 32.2 ;-- default target temperature for the whole system
+
+    [HeadDriver1:1] 
+    HeadTargetTemperature = 43.8 ;-- target temperature for the head on PCC:1. HDC:1
+
+    [HeadDriver1:2]
+    HeadTargetTemperature = 53.2 ;-- target temperature for the head on PCC:1. HDC:2
+
+
+
+
+
+
+-------------------------------------------------------------------------------------------------
+    Getting real head /HDC temperatures
+-------------------------------------------------------------------------------------------------
+The real (measured) values of temperatures and some other parameters are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multiplied by 10
+
+--- For both RG4 and RG5 HDC boards:
+TAppHeadStatus::Temperature5  - HDC amplifier1 temperature
+TAppHeadStatus::Temperature6  - HDC amplifier2 temperature
+TAppHeadStatus::Temperature7  - HDC amplifier3 temperature  
+TAppHeadStatus::Temperature8  - HDC amplifier4 temperature
+
+
+--- 2 RG4 Head temperatures:
+TAppHeadStatus::Temperature1  -  Head1 "Odd  row" temperature-+-- this should be identical
+TAppHeadStatus::Temperature2  -  Head1 "Even row" temperature-'
+TAppHeadStatus::Temperature3  -  Head2 "Odd  row" temperature-¬
+TAppHeadStatus::Temperature4  -  Head2 "Even row" temperature-+-- this should be identical
+
+
+--- RG5 Head temperature:
+TAppHeadStatus::Temperature1  -  Head temperature
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,77 @@
+=================================================================================================
+    Some information regarding  KonicaMinolta KM_1024i/KM1800i head EEPROM data
+=================================================================================================
+
+First of all, there is some generic information regarding getting head EEPROM data: \TechnicalNotes\TestApp\Head_EEPROM.txt 
+
+Head EEPROM data contains the same information that can be found on the head label:
+
+    * head serial number
+    * a number of hex codes that describe recommended head ASIC voltages. These codes and voltages corresponding 
+      to them can be found in Epson documentation. Meteor decodes these voltages for user convenience.
+
+---
+An example of KM1024i head EEPROM data:
+
+{
+  "#HeadType" : "HT_KM1024I",
+  "#InfoType" : "Head EEPROM Data",
+  "01-04-01-01" : 
+  {
+    "#DataValid" : true,
+    "Checksum" : "0x262f",
+    "MemMaprevision" : "2",
+    "ProductInfo" : "0x511c",
+    "SerialNumber" : "0x3030,0x3030,0x0000,0x0000", !!Note that head serial number is not decoded, this is because KM specs do not tell how to do this.
+    "SerialNumber1" : "0x0000",
+    "VH1A_Left" : "6.6",
+    "VH1A_Right" : "6.5",
+    "VH1B_Left" : "5.7",
+    "VH1B_Right" : "5.8",
+    "VH2_Left" : "11.4",
+    "VH2_Right" : "11.4"
+  },
+  "01-04-02-01" : 
+  {
+    "#DataValid" : false
+  }
+}
+
+---
+An example of KM1800i head EEPROM data:
+
+{
+    "#HeadType" : "HT_KM1800I",
+    "#InfoType" : "Head EEPROM Data",
+    "00:03:00:00" : {
+       "#DataValid" : true,
+       "Checksum" : "0x2cb6",
+       "HeadType" : "A2YK",
+       "MemMaprevision" : "2",
+       "SerialNumber" : "2235",
+       "VH1A_Left" : "7.6",
+       "VH1A_Right" : "7.9",
+       "VH1B_Left" : "7.5",
+       "VH1B_Right" : "7.3",
+       "VH1C_Left" : "6.7",
+       "VH1C_Right" : "6.5",
+       "VH2_Left" : "14.6",
+       "VH2_Right" : "14.5"
+    },
+    "00:03:01:00" : {
+       "#DataValid" : false
+    }
+}
+
+Regarding using/applying those voltage values: please look at "Voltages_Temperatures.txt"
+
+
+
+ 
+
+
+
+
+
+
+

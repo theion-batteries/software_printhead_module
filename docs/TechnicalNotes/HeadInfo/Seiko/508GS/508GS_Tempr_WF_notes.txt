@@ -1,0 +1,38 @@
+=================================================================================================
+Some information regarding Seiko 508GS waveforms / head temperatures etc.    
+=================================================================================================
+
+
+FX2 code that converts 8-bit DAC value to 10x scaled head temperature uses some sort of
+quadratic approximation, like: T = 0.008716407x^2 - 6.475387458x + 1136.921904303, and
+in general: T = Coef_A*x^2 - Coef_B*x + Coef_C
+
+These A, B, C coefficients depend on thermistor itself, HDC thermisttor amplifier etc.
+In theory, they can be hardcoded once and forewer.
+
+On the other hand, board schematics can change and therefore we need to be able to change
+these coefficients on per-PCC basis.
+So, those coefficients can be set in the Meteor config file.
+
+By default, if nothing is set, FX2 code will use default hardcoded values.
+In order to set other A, B, C coefficient values it is necessary to place folllowing lines in to the
+config file, for the specific ControllerX
+
+[ControllerX]
+TempCalcParams = 571, 424371, 74509314 ;- def. values from FW for A, B, C coefficients     
+
+This parameter key is a list of 3 values that correspond to A, B and C coefficients scaled 2^16 times.
+I.e. A = 571/65356 == 0.008736764796 
+
+If all of these parameters or any of them is 0, then they are ignored and default hardcoded values are used.
+Be careful with the numbers you place there, it is quite possible to make head temperature calculations 
+invalid if wrong parameter values specified.
+
+In order to apply A,B,C coefficients value changes, the printEngine should be re-initialised.
+
+Also, log can contain lines like this:
+PrintEngine::T508GsHead::DoSendTempCalcCoefficients() PCC:0, Using Temp.Calc.Coefs, A:571, B:424371, C:74509314
+This can be useful for checking what values sent to the concrete PCC.
+
+
+

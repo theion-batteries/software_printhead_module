@@ -1,0 +1,56 @@
+
+=================================================================================================
+    Some information regarding using "Delay Select" feature for Kyocera KJ4 head driven by PDC-2KA600
+=================================================================================================
+
+This head type has a number of settings that affect some prit units delay. 
+In head specs this parameter is called DLYSEL. It consists of 4 values: DLYSEL1, DLYSEL2, DLYSEL3. DLYSEL4.
+Their default values are 6, 2, 6, 2 accordingly.
+
+
+It is possible to change these values to anything, but, probably, it is a good idea to use pre-defined sets from
+the head specs: [5,1,5,1] and [7,3,7,3].
+
+To change these values it is necessary to use Meteor config file parameter with the name: "OPR_Mode".
+It specifies a single 32-bit value, every byte of it corresponds to DLYSEL1, DLYSEL2, DLYSEL3. DLYSEL4.
+
+E.g
+    OPR_Mode = 0x02060206; head default value
+                 \/\/\/\/      
+                  | | | |
+                  | | | `-- Byte0, value 0x06, corresponds to DLYSEL1
+                  | | `---- Byte1, value 0x02, corresponds to DLYSEL2
+                  | `-----  Byte2, value 0x06, corresponds to DLYSEL3
+                  `-------  Byte3, value 0x02, corresponds to DLYSEL4
+
+This parameter can be placed into [DefaultParameterValues] section, where it sets a global default value for the 
+whole system or/and into [HeadDriverX:Y] section if you want to set it for the particular head.
+
+For example:
+
+
+    [DefaultParameterValues] ;-- default settings for the whole system
+
+    OPR_Mode = 0x02060206; head default value
+    ;OPR_Mode = 0x01050105; alternative value1
+    ;OPR_Mode = 0x03070307; alternative value2
+
+
+
+    [HeadDriver1:1] ;-- settings for PDC:1, head:1
+    OPR_Mode = 0x01050105; alternative value1
+
+    [HeadDriver1:2] ;-- settings for PDC:1, head:2
+    OPR_Mode = 0x03070307; alternative value2
+
+
+On heads power on the DLYSEL values are read and can be found in log lines that contain something like:
+
+ "[PCC:1,HDC:2] reports read delay selection registers: 06, 02, 06, 02"
+
+
+
+
+
+
+

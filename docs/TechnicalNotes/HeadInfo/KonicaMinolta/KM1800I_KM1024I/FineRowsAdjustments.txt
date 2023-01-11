@@ -1,0 +1,24 @@
+=================================================================================================
+    
+Some information on "fine row adjustment" for KM1800i/1024i print heads 
+
+=================================================================================================
+
+This topic periodically appears in customers' questions, so it is better to document it.
+
+
+KM1800i/1024i heads are made of 2 "halves" or "PrintModules" or "Jettting assemblies" (JAs) in Meteor terms.
+Every head "half" is made of several nozzle rows: 
+
+    KM1024i:  Half1:[LA+LB]     Half2:[RA+RB]
+    KM1800i:  Half1:[LA+LB+LC]  Half2:[RA+RB+RC]
+
+The problem is that within one JA or "head half" nozzle rows (e.g. [LA+LB]) share the same firing signal, i.e. they 
+fired at the same time.
+But each head "half" has its own fire signal.
+
+This means that it is possible to apply fine row adjustments (by delaying fire siggal with 1/16 pixel clock resolution)
+to head halves or JAs, but it is not possible to fine adjust nozzle rows x-positions withing one JA.
+
+
+

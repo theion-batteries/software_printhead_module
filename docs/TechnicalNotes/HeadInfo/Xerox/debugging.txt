@@ -1,0 +1,43 @@
+
+=================================================================================================
+    Some useful tips for debugging problems with XeroxW head
+=================================================================================================
+
+
+
+* Saving head NVRAM image to the file on a PC on head powering on: See "WF_Info.txt"    
+
+* Exporting waveforms and WaveRam contents being sent to the head to a tabulated text file
+    that can also be viewed with GNU Plot:  See "WF_Info.txt"    
+
+* Monitoring some of the head status registers (RAM locations). It can be done in a Motnitor application,
+    "Status" page->"HDC/head" pane. Update period is about 300ms.
+        
+        "Status Bits2" -> value from addr: 0x0000C -> latched fault/status head bits 
+        "CtrlStat_0x2" -> value from addr: 0x00002 -> head control/status bits         
+        
+        "Head Temp"     current head temperature in degrees C.
+        "Head TargetT"  target  head temperature in degrees C.
+
+        "InkPressure1"  ink pressure in Pascals
+        "InkPressure2"  ink pressure in Pascals
+
+
+* It is also possible to dump some areas of head RAM into the file and transfer this file to the PC for study.
+    Precondition: the head must be powered.
+    This is done by sending a signal SIG_DEBUG_CONTROL to the selected PCC. Probably the simplest way to do this 
+    is sending this signal from TestApp, as described here:  \TechnicalNotes\TestApp\Params_Signals.txt
+    This signal code is 0x14 and signal data should be 0. 
+    For example, if we want to ask for RAM dump of the head on PDC:1, then the "signal id" field should be: 00:01:01:14
+    and "Val" field should be 0. See TestApp->"Scratch" tab -> "PiSetSignal API" box.
+    Tip: look for errors in Monitor, if something goes wrong, the error will be displayed.
+    If operation is successful, a file with the name "PCC1_XeroxW_RamDump.txt" will be created in the directory 
+    where NVRAM images/Waveforms are stored ("PCC_DownloadedLogs" by default, see "WF_Info.txt").
+    "PCCx" file name prefix corresponds to the PCC index we are dealing with.
+    Note that this is quite expensive operation.
+
+
+* Force sending WF data to HDC even in it is not powered or head is not present. This can be useful for WF debugging. 
+    use "ForceHeadPowerON = 1" in [Test] section of the Meteor config file.
+
+

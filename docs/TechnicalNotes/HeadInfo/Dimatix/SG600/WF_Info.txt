@@ -1,0 +1,148 @@
+
+=================================================================================================
+    
+Some information on the waveform files for Dimatix SG600 heads.
+
+=================================================================================================
+
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+
+
+*   Max. total number of segments in a whole WF is 31; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+*   Each Pulse has a 8-bit GreyLevel mask associated with it.  Every bit in the GL mask byte is set 
+    if this WF pulse will be used to eject ink for a particular 3BPP pixel data.
+    For a binary waveform (printing 1BPP) the GL mask is usually 0xFE
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                   .
+         .    .--     .      .
+         .   /.  \____.__    .
+         .  / .       .   \  .
+         .-/  .       .     \.
+         .    .       .      .
+           S0     S1     S2
+
+
+Waveform constraints:
+ * 1..8 pulses per Waveform, 2..8 segments per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same low voltage: 1.0 Volt
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * Hold time can't be < 50ns and > 4096*50nS
+ * absolute Min & Max voltages are properties of the hardware and must be in range: [1...130] volts 
+ * Start and end voltages of every waveform Pulse should be the same and equal to 1.0V.
+    This also means that whole WF should start and end at 1.0V. This is done to prevent head damage, because
+    the WF Pulse end latches print data for the next Pulse and this must be done when WF voltage is 
+    close to 0V. This still allows making multislope pulses as on a picture above.
+
+
+
+--- Hardware configuration:
+
+    * Dimatix SG600 head has 12 physical nozzle rows in total, but logical organisation of these rows is more complicated:
+        - in therms of driving waveforms there are 6 "Jetting assemblies" (JAs), each is made of 2 physical nozzle rows
+        - whole head is made of 2 "Modules" or "halves", 3 JAs each.
+
+    Thus, in theory, it is possible to use individual waveform for every JA[0..5], but in practice JA0..JA2 must use identical
+    waveform, and JA3..JA5 must use identical waveform. The head "halves" can use different waveforms.
+    On the other hand, it is possible to adjust waveforms slightly within a head "half", see "WF voltage scaling section".
+    
+
+
+--- Waveforms configuration:
+
+    * Waveforms data is stored files, e.g. "SG600_WaveformSample.txt"
+    * These file names/paths are listed in "head section". e.g [SG600]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+    * "Tickling" waveform is selected by "TickleWaveformFileIdx" parameter, like "TickleWaveformFileIdx = 2"
+        Its default value is 0, which means "not used".
+
+    Configuration example:
+
+    [SG600] ;-- "head" section
+    Waveform1 = ".\Waveform\Dimatix\SG600\SG600_WaveformSample.txt"       ;-- working WF1  
+    Waveform2 = ".\Waveform\Dimatix\SG600\SG600_WaveformSample2.txt"      ;-- working WF2   
+    Waveform3 = ".\Waveform\Dimatix\SG600\SG600_TickleWaveformSample.txt" ;-- tickling WF
+
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform:  "SG600_WaveformSample.txt"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "SG600_TickleWaveformSample.txt"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1,1, 2,2,2 ;-- working  waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4, JA4, JA5, JA6 respectively
+    TickleWaveformFileIdx = 0,0,0, 3,3,3 ;-- tickling waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4, JA4, JA5, JA6 respectively
+
+
+Note that the example above specifies waveforms down to the JAs level. The head has 6 JAs, so, it is required to specify
+list of 6 values in [HeadX:Y] section, one value per JA. But as it was mentioned above, all JAs within head "half" 
+must use the same waveform. 
+So, head1 "half1" will use working WF with index1 and tickling WF with index0(no tickling), and "half2" will use 
+working WF with index2 and tickling WF with index3.
+Any attempts to specify different WF for JAs within one head "half" will result in error during head initialisation. 
+E.g this assignment is invalid: "WaveformFileIdx       = 1,2,1, 2,2,2"
+
+
+
+=================================================================================================
+====    Waveform voltages scaling 
+=================================================================================================
+
+It is possible to slightly vary WF voltages without changes in WF file.
+This "WF scaling" can be applied to: 
+ * each head's JA  individually
+ * whole head (All JAs at the same time)
+ * all heads/HDCs on the same PCC
+ * All PCCs/HDCs/Heads in whole system.
+
+WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+
+"WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+Note that it has quite narrow range.
+
+"WF_VScale_Mode" Specifies mode of scaling: 
+
+    0: scaling disabled
+    1: (default) keeps segment hold time and whole total segment width constant, slew rate changes.
+    2: keeps slew rate constant, segment hold time changes. Keep total segment width and whole WF duration constant. 
+
+
+Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+Usual mechanism of “parameters overriding” applies.
+
+If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+

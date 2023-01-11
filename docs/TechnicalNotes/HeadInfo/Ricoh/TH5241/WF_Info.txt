@@ -1,0 +1,178 @@
+
+=================================================================================================
+    
+    Some information on the waveform files for Ricoh TH5241 heads.
+
+=================================================================================================
+
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+
+
+*   Max. total number of segments in a whole WF is 31; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+*   Each Pulse has a 8-bit GreyLevel mask associated with it.  Every bit in the GL mask byte is set 
+    if this WF pulse will be used to eject ink for a particular 3BPP pixel data.
+    For a binary waveform (printing 1BPP) the GL mask is usually 0xFE
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                ___.
+         .\   .       .  /   .
+         . \__.       . /    .
+         .    .\      ./     .
+         .    . \-----.      .
+         .    .       .      .
+           S0     S1     S2
+
+
+==== An example of how "Grey level mask" is formed ==============================================
+
+                7654 3210 <- Grey level value                        
+                |||| ||||                                            
+    Pulse 0:    1111|1110 0xFE  prints for GL values  7,6,5,4,3,2,1 
+    Pulse 1:    1111|1100 0xFC  prints for GL values  7,6,5,4,3,2
+    Pulse 2:    1111|1000 0xF8  prints for GL values  7,6,5,4,3
+    Pulse 3:    1111|0000 0xF0  prints for GL values  7,6,5,4
+    Pulse 4:    1110|0000 0xE0  prints for GL values  7,6,5
+    Pulse 5:    1100|0000 0xC0  prints for GL values  7,6
+    Pulse 6:    1000|0000 0x80  prints for GL value   7
+                          ^^^^
+                           |
+                           +-- Pulse GL mask  
+
+==================================================================================================
+
+Waveform constraints:
+ * 1..8 pulses per Waveform, 1..8 segmenst per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same voltage.
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * Hold time can't be < 50ns and > 4096*50nS
+ * absolute Min & Max voltages are properties of the hardware and hardcoded [0...36.0] volts 
+
+ 
+
+--- Hardware configuration:
+
+    * Ricoh TH5241 head has 4 nozzle rows or "Jetting Assemblies" (JAs).
+    * Every JA can have its own working and optional "tickling" waveform.
+
+--- Waveforms configuration:
+
+    * Waveforms data is stored files, e.g. "RicohTH5241_Waveform_Sample.txt"
+    * These file names/paths are listed in "head section". e.g [Ricoh_TH5241]
+    * Concrete WF file file is selected by "Waveform file index" parameter. 
+        E.g. "WaveformFileIdx = 1". Its default value is 1.
+    * "Tickling" waveform is selected by "TickleWaveformFileIdx" parameter, like "TickleWaveformFileIdx = 2"
+        Its default value is 0, which means "not used".
+
+    Configuration example:
+
+    [Ricoh_TH5241] ;-- "head" section
+    Waveform1 = ".\Waveform\TH5241\RicohTH5241_Waveform_Sample1.txt"       
+    Waveform2 = ".\Waveform\TH5241\RicohTH5241_Waveform_Sample2.txt"       
+    Waveform3 = ".\Waveform\TH5241\RicohTH5241_TickleWaveform_Sample.txt" 
+
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform: "RicohTH5241_Waveform_Sample1.txt"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "RicohTH5241_TickleWaveform_Sample.txt"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1,1,2 ;-- working  waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+    TickleWaveformFileIdx = 0,0,3,3 ;-- tickling waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+
+
+    Note: JA1 corresponds to "RowA" in Xaar terminology, Ja2->"RowB", Ja3->"RowC", Ja4->"RowD"
+
+
+=================================================================================================
+====    Waveform voltages scaling 
+=================================================================================================
+
+It is possible to slightly vary WF voltages without changes in WF file.
+This "WF scaling" can be applied to: 
+ * each head's JA  individually
+ * each head (All JAs at the same time)
+ * all heads/HDCs on the same PCC
+ * All PCCs/HDCs/Heads in whole system.
+
+WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+
+"WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+Note that it has quite narrow range.
+
+"WF_VScale_Mode" Specifies mode of scaling: 
+
+    0: scaling disabled
+    1: (default) keeps segment hold time and whole total segment width constant, slew rate changes.
+    2: keeps slew rate constant, segment hold time changes. Keep total segment width and whole WF duration constant. 
+
+
+Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+Usual mechanism of “parameters overriding” applies.
+
+If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of voltages/temperatures/other parameters are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Please note that TH5241 head doesn't have built-in heater, only thermistor for monitoring head temperature.
+
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1  Amplifier1 temperature
+TAppHeadStatus::Temperature2  Amplifier2 temperature
+TAppHeadStatus::Temperature3  Amplifier3 temperature
+TAppHeadStatus::Temperature4  Amplifier4 temperature
+TAppHeadStatus::Temperature5  Head temperature 
+
+
+TAppHeadStatus::Voltages[0] VDDA, volts, 10x scaled
+TAppHeadStatus::Voltages[1] VCOM, volts, 10x scaled
+TAppHeadStatus::Voltages[2] Amplifier current, ma
+
+
+
+
+

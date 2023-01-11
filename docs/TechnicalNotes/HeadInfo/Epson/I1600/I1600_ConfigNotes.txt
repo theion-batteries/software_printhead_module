@@ -1,0 +1,36 @@
+=================================================================================================
+    Some information about EpsonI1600 head configuration driven by HMB-3EI3200
+=================================================================================================
+
+
+
+-- Hardware configuration:
+    HMB-3EI3200 with some hardware modifications drives three EpsonI1600 heads. Default Meteor config file is: "DefaultEpsonI1600_PccZ.cfg"
+    ! Important ! never attach I1600 head to the standard non-modified version of HMB-3EI3200. This will dabage the head and HMB
+
+
+-- Notes on PCC/HDC/Head configuration:
+    Basically, HMB-3EI3200 is a usual PCC that drives 3 HDCs, each HDC drives one head. The only thing that
+    PCC+HDCs are located on the same PCB. So, heads addressing looks as follows:
+
+        Head1 on HMB5 ->  PCC:5, HDC:1, Head:1
+        Head2 on HMB5 ->  PCC:5, HDC:2, Head:1            
+        Head3 on HMB5 ->  PCC:5, HDC:3, Head:1            
+    
+    Note that head index is always 1 (HDC drives one head only), but HDC index specifies which "head" is
+    being addressed.
+
+
+-- Colour planes
+See "I1600_NozzleLayout.txt" for more information
+
+
+-- Waveforms:
+Epson I3200 and I1600 use the same ASICs, so, the waveform files are completely compatible for those head types.
+Though you can explicitly set a correct head type in the WF file (see WF examples).
+
+-- EEPROM
+It looks like I3200 head EEPROM contains exactly the same information as I3200. Please refer to I3200 documentation.
+
+
+

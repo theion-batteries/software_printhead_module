@@ -1,0 +1,119 @@
+=================================================================================================
+    Some information regarding "PCC-ID" board for PCC-E
+=================================================================================================
+
+
+----------- Classical case: Assigning PCC-E numbers using daisy chain
+
+There can be several PCCs in the system. In order to give PCCs sequential numbers they need 
+to be connected via "daisy chain" cables. PCCs boards that close to the "Master PCC" in daisy chain terms
+get lower numbers (PccIDs). Master PCC is connected to the Encoder and PD sensor.
+This configuration is well described in Meteor documetation (corresponding application notes) and shown on 
+the picture below:
+
+
+                                                  +-------------------+
+                                                  |                   |
+                                                  |   PC              |
+                                                  |                   |
+                                                  +-------------------+
+                                                    |   |   |   
+                   +--------------------------------+   |   |   
+                   |                    +---------------+   |   
+                   |                    |                   |   
+    +-------------Eth-+  +-------------Eth-+ +-------------Eth-+
+    |                 |  |                 | |                 |
+    |                 |  |                 | |                 |
+    | DaisyChainPos=1 |  | DaisyChainPos=2 | | DaisyChainPos=3 |
+    |                 |  |                 | |                 |
+    | Pcc1(master)    |  | Pcc2            | | Pcc3            |
+    +----------o------+  +------^--o-------+ +------^----------+
+      ^  ^     |                |  |                |           
+      |  |     +----------------+  +----------------+           
+      |  |              daisy chain link                        
+      |  |                                                      
+      |  +-- PD                                                 
+      +------Encoder                                            
+
+
+This approach suits the vast majority of the use cases. The trouble begins when it is not possible to have 
+a physical daisy chain link between some PCCs. For example, several print bars, made of multiple heads each.
+It is possible to connect PCCs that serve one PrintBar with a daisy chain, but different PrintBars can be situated
+too far away from each other and can't be connected via daisy chain cable.
+
+In order to mitigate such issues it might be worth assigning PCCs numbers manually, but it is not really easy, because
+PCC numbers can be [1..254] and keeping track of them will be problematic.
+
+
+----------- PCC clusters and "PCC-ID" boards
+
+A different approach had been applied: Instead of assigning each PCC its number individually, it is possible to assign
+"PCC Base number" to a sort of "PCC cluster", within one cluster there should be a daisy chain that allow PCCs enumeration,
+and it is possible to have sevaral such "PCC clusters". 
+This can be done by using a small "PCC-ID" board that is plugged into a connector an a PCC-E board. 
+
+Each "PCC-ID" board has a 16-position rotary switch with positions marked as 0..F (0..15 in decimal).
+This switch is used to set PCC "ClusterId", which in turn used to working out real PCC number.
+
+PCC number is calculated as follows: PccNumber = (ClusterId * 8) + (PccPosition in DaisyChain).
+
+In Meteor system PccNumber should be in range: [1..254]
+
+So, it is possible to have upto 8 PCCs in a daisy chain (all PCCs in such "cluster" must have the same "ClusterId".
+And up to 32 such "PCC clusters".
+
+Configuration example:
+
+
+
+                                                  +-------------------+
+                                                  |                   |
+                                                  |   PC              |
+                                                  |                   |
+                                                  +-------------------+
+                                                    |   |   |   | |        Ethernet
+                   +--------------------------------+   |   |   | +-------------------------------------+
+                   |                    +---------------+   |   +------------------+                    |
+                   |                    |                   |                      |                    |
+    +-------------Eth-+  +-------------Eth-+ +-------------Eth-+    +-------------Eth-+  +-------------Eth-+
+    | PccClusterId=0  |  | PccClusterId=0  | | PccClusterId=0  |    | PccClusterId=1  |  | PccClusterId=1  |
+    | ========        |  | ========        | | ========        |    | ========        |  | ========        |
+    | DaisyChainPos=1 |  | DaisyChainPos=2 | | DaisyChainPos=3 |    | DaisyChainPos=1 |  | DaisyChainPos=2 |
+    |                 |  |                 | |                 |    |                 |  |                 |
+    | Pcc1(master)    |  | Pcc2            | | Pcc3            |    | Pcc9(master)    |  | Pcc10           |
+    +----------o------+  +------^--o-------+ +------^----------+    +----------o------+  +------^----------+
+      ^  ^     |                |  |                |                 ^  ^     |                |         
+      |  |     +----------------+  +----------------+                 |  |     +----------------+  
+      |  |              daisy chain link                              |  |      daisy chain link
+      |  |                                                            |  |     
+      |  +-- PD                                                       |  +-- PD
+      +------Encoder                                                  +------Encoder
+
+
+In this example we have 2 "clusters": [PCC1..PCC3] and [PCC9..PCC10]. Each cluster can have its own ProductDetect sensor
+and the encoder. PCC1 and PCC9 start cluster daisy chain and, so they are "Masters", Encoder and PD sensors connected to 
+them. 
+In Meteor config file it is set up as follows:
+
+[Controller1]
+Master = 1          ; This controller is Master
+
+
+
+[Controller9]
+Master = 1          ; This controller is Master
+
+
+It is also possibe to specify different PD forward and reverse offsets for master PCCs.
+
+
+Some tips:
+
+It might be useful to use "identify PCC" button in Monitor ("Status" Tab) to identify some PCCs.
+Pressing this button makes blue LED inside it blink. 
+
+
+
+
+
+

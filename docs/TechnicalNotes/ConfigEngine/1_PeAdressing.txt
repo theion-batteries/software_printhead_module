@@ -1,0 +1,129 @@
+
+
+    A typical Meteor system configuration is shown on the picture below:
+
+
+
+            +-----------------------------------------------------------------+
+            |                                                                 |
+            | PCC 1                                                           |
+            |            1     2     3     4     5    6    7    8             |
+            +------------#-----#-----#-----#-----#----#----#----#-------------+
+                         |                                      |
+                         |                                      |
+            +--------------------------+           +--------------------------+ 
+            |          HDC 1           |           |          HDC 8           | 
+            |                          | ........  |                          | 
+            |    1    2    3     4     |           |    1    2    3     4     | 
+            +----#----#----#-----#-----+           +----#----#----#-----#-----+ 
+                 |    |    |     |                      |    |    |     |       
+                 |               |                      |               |       
+                 |               |                      |               |
+                 |               |                      |               |       
+            +- head 1 -+    +- head 4 -+           +- head 1 -+    +- head 4 -+ 
+            |          |    |          |           |          |    |          | 
+            | JA1  JA2 |    | JA1  JA2 |           | JA1  JA2 |    | JA1  JA2 | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |....|  o    o  |           |  o    o  |....|  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |  o    o  |    |  o    o  |           |  o    o  |    |  o    o  | 
+            |          |    |          |           |          |    |          | 
+            +----------+    +----------+           +----------+    +----------+ 
+
+
+--- Main terminology:
+
+    - "PCC" stands for "Printer Controller Card" and in it is the top-level controller that is connected to a host PC
+        via USB or Ethernet. PCC drives several HDCs.
+    
+    - "HDC" means "Head driver card" and each HDC drives one or several physical print heads.
+
+    - "Head" a physical printhead.
+
+    - "JA" or "Jetting Assembly" This term describes some LOGICAL part of the print head. In general case it is not possible
+        to establish definite relationship between "Jetting Assembly" and any type of head physical structure. JA structure usually
+        derived from head configuring point of view (voltages, waveforms) and doesn't have to be direcly related to head's
+        nozzle rows.
+
+--- Some additional terminology that can be found in our documentation:
+
+    - Nozzle Row:   a single vertical row of nozzles that has its own "fire" signal (E.g. RG5 head has 4 classical nozzle rows). 
+
+    - Print Module: some heads have several parallel (but interlaced in Y direction) nozzle rows that have a common
+                    "fire" signal. So, it is not a single row of nozzles.  Example: KM1024 head
+
+    - HDC row:      Mostly for internal use. HDC doesn't need a knowledge of how many heads it drives, it drives 
+                    "Nozzle rows". E.g. The same HDC can drive 2 heads with 2 nozzle rows or 1 head with 4 nozzle rows.
+                    Higher level software (PrintEngine) cares about how all HDC rows assigned to physical heads on 
+                    this HDC. (And this isn't straightforward!)
+
+    - PDC:          "Printer Driver Card" Sometimes it makes sense to make a single combined board that contains
+                    PCC and some number of HDCs on it (E.g. some Kyocera PDCs). This configuration still fits the 
+                    picture above. 
+
+
+--- Physical limitations:
+    - Max. number of PCCs is 255  [PCC1...PCC255]
+    - One PCC can drive upto 8 HDCs [HDC1..HDC8]
+    - Each HDC can  drive upto 8 "HDC rows", it can be 8 heads with one "nozzle row", 4 heads with 2 "nozzle rows" etc.
+    - Max. number of JAs per head is 16
+
+
+--- PE Address 
+
+In order to address any part of this system (PCC, HDC or anything downto individual JA) so called "PE-Addressing" 
+("PE" stands for "PrintEngine") scheme was introduced. This is just 4 numbers in a form:  "PCC-HDC-Head-JA"
+
+For example PEAddress [3-4-2-1] means "PCC3,HDC4,Head2,JA1".
+It is possible to address groups of items in PE-Address hierarchy. For this a special value "0" meaning "Any" or "*" is
+used. Note that concrete a PCC/HDC/Head/JA can't have index 0.
+
+For example, 
+[3-4-2-1]  means "PCC3,HDC4,Head2,JA1" all parts are fully specified, so, this addres is called "fully specified"
+[3-4-2-0] or [3-4-2-*] means "All JAs" for PCC3,HDC4,Head2
+[3-4-0-0] or [3-4-*-*] means "All JAs" an all heads for  PCC3,HDC4
+[3-0-0-0] or [3-*-*-*] means "All JAs" an all heads on all HDCs driven by PCC3
+[0-0-0-0] or [*-*-*-*] means "All JAs" an all heads on all HDCs for all PCCs in the system.
+
+It is not possible to use addresses like [3-4-*-1] (JA1 for all heads on PCC3, HDC4) or [*-*-*-1] (JA1 for whole system).
+This is because such cases are really rare in normal use and make everything very complicated.
+No one usually needs such sort of addressing, if you find out that you need addressing like [3-4-*-1], than it is likely
+possible that you are doing something wrong.
+
+--- "User" vs "Internal" PE Address representations
+
+All "PE Address" information mentioned above related to a "User" mode. In this case all numbering, like PCC number, HDC etc.
+start from 1 and 0 has a special meaning "ANY".
+This is because all things in Meteor config file are counted from one, and it is simpler for the user to think this way.
+
+
+Inside PrintEngine all objects are numbered starting from 0, and 255 (or 0xFF in hex) has a special meaning "ANY".
+So, the addressing is absolutely the same, but all indices are less by 1 and value "ANY" looks different.
+Also, objects indices are in hexadecimal format. 
+This form of PE Addressing can be seen in PrintEngine error messages and when some additional logging categories enabled 
+(like "ConfigEngine").
+
+
+In order to distinguish between different forms of "PE Address", they are recorded and displayed slighly differently:
+
+[33-04-02-00]   "User" format, means "All JAs" for PCC33,HDC4,Head2
+[21:03:01:FF]   "Internal" format, means the same, all numbers in hex
+
+
+For example, following log snippet shows both representations of the same PE Address:
+
+16:42:31.432 CConfigEngine::GetFpParam(04:00:00:01, Id:0x121 'WF_VScale_Mode', DefVal:2) => 2
+16:42:31.432 CConfigEngine::GetFpParam(04:00:00:01, Id:0x122 'WF_VScale_Coeff', DefVal:1) => 1
+16:42:31.432 ### Scaling WF for:[05-01-01-02] Mode:2, coeff:1.000000 
+16:42:31.432 ### WF range for:[05-01-01-02] is [-25.000V, -0.500V]
+
+
+
+
+
+
+
+
+

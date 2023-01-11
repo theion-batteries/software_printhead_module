@@ -1,0 +1,38 @@
+=================================================================================================
+    Some information regarding  Samba head/amplifiers  temperatures  
+=================================================================================================
+
+
+-- System configuration:
+
+A PCC drives upto 8 HDCs. Each HDC drives one Samba head. Each Samba head has to "halves", 
+each head "half" is driven by its own amplifier, so, 2 amplifiers per head.
+        
+
+
+The real (measured) values of head / amplifiers temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    Head temperature
+
+--- Waveform amplifiers temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature2    Head side1 amplifier temperature
+TAppHeadStatus::Temperature3    Head side2 amplifier temperature
+
+
+---- this part of information is specific to HMB_2SB on PCC-Z.
+This sort of hardware additionally reports information like PCC/Amplifiers voltages and consumption currents as follows:
+
+TAppHeadStatus::Voltages[0]  PCC consumption current, ma           
+TAppHeadStatus::Voltages[1]  PCC supply voltage, 10x scaled        
+TAppHeadStatus::Voltages[2]  Amplifiers supply voltage, 10x scaled 
+TAppHeadStatus::Voltages[3]  Amplifiers current, ma                
+TAppHeadStatus::Voltages[4]  EE leakage current, uA                
+
+
+
+

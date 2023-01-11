@@ -48,7 +48,9 @@
             </summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_OEN1">
-            <summary>Output enable for HDC GPIO 1 signal
+            <summary>Output enable for HDC GPIO 1 signal.  GPIO signals are not available on all HDCs : see hardware manual
+            for details.  On some HDCs the GPIO signals are bidirectional and default to inputs.  To enable a
+            signal as an output the corresponding SIG_OENx signals must be set to 1.
             <br/><b><i>pccnum </i></b>1 - n
             <br/><b><i>hdcnum </i></b>1 - n 
             <br/><b><i>state </i></b>1 (configure GPIO pin as an output) or 0 (configure GPIO pin as an input)</summary>
@@ -90,7 +92,7 @@
             <para>It is not possible to make a further HDC power change until this state machine has completed, so the application should check that 
                   the BMPS2_HEAD_POWER_IN_PROGRESS bit in TAppPccStatus.bmStatusBits2 is clear before calling SIG_HDPOWER.</para>
             <br/><b><i>pccnum </i></b>1 - n
-            <br/><b><i>hdcnum </i></b>1 - n, or 0 to apply head power to all heads on the PCC
+            <br/><b><i>hdcnum </i></b>1 - n, or 0 to apply power to all (used) HDCs on the PCC
             <br/><b><i>state </i></b>0 or 1</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_PCLOCK">
@@ -117,6 +119,7 @@
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_SPIT">
             <summary>Do a number of spits (fire on every nozzle) on the specified HDC. It is also possible to spit on all HDCs, see parameters.
+                     Spit frequency is 8000Hz by default and can be changed by sending SIG_SET_TICKLE_FREQ
                      Set pccnum = 0 and hdcnum = 0 to spit on all HDCs listed in the config file. (All connected PCCs and all listed HDCs)
                      Set concrete pccnum and hdcnum = 0 to spit on all HDCs listed in the config for this particular PCC
             <br/><b><i>pccnum </i></b>1 - n (or 0 to spit on all PCCs/HDCs)
@@ -124,7 +127,7 @@
             <br/><b><i>state </i></b>number of spits, 1 - 65535</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_TTEST">
-            <summary>Test signal</summary>
+            <summary>Data Throughput Test signal</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_VREG">
             <summary>FREG access for Vista</summary>
@@ -172,9 +175,13 @@
             <br/><b><i>hdcnum </i></b>1 - n 
             <br/><b><i>state </i></b>Control code</summary>
         </member>
-        <member name="F:Ttp.Meteor.SigTypes.SIG_UNUSED">
+        <member name="F:Ttp.Meteor.SigTypes.SIG_RUN_PCC_TEST">
             <summary>
-            Reserved value
+            Run a test on PCC hardware.
+            <br/><b><i>pccnum </i></b>1 - n
+            <br/><b><i>hdcnum </i></b> not used 
+            <br/><b><i>xaddr </i></b> TestId
+            <br/><b><i>state </i></b> depends on a TestId
             </summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_STEPPER">
@@ -198,7 +205,8 @@
             <br/><b><i>state </i></b>Bits[31:28] = 0 (disable), 4 (mode 1), 6 (mode2 - obsolete).  Bits[27:0] = Length N; every (N+1)th encoder pulse is discarded.</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_SET_TICKLE_FREQ">
-            <summary>Set the tickle frequency (Hz) for the PCC.  K1200, K600, K300, HDC-R and HDC-S only.
+            <summary>Set the tickle and spit (see SIG_SPIT) frequency (Hz). By default it is 8000Hz.
+                     Absolute min/max values are:min: 82Hz, max: 100KHz. These are FPGA limits, concrete print head can have its own.
             <br/><b><i>pccnum </i></b>0 - n; setting to zero applies setting to all connected PCCs
             <br/><b><i>hdcnum </i></b>unused (should be 0)
             <br/><b><i>state </i></b>Frequency in Hz</summary>
@@ -271,11 +279,12 @@
             <br/><b><i>hdcnum </i></b>unused (should be 0)
             <br/><b><i>state </i></b>unused (should be 0)</summary>
         </member>
-        <member name="F:Ttp.Meteor.SigTypes.SIG_FIREOUT_DELAY">
-            <summary>Delay between the master fire-pulse and the fire out signal
+        <member name="F:Ttp.Meteor.SigTypes.SIG_FIREOUT_CONTROL">
+            <summary>FireOut control signal
             <br/><b><i>pccnum </i></b>(1-N)
             <br/><b><i>hdcnum </i></b>unused (should be 0)
-            <br/><b><i>state </i></b>[Bits15:0] Delay1 in 12.5ns units; [Bits30:16] Delay2 in 12.5ns units (zero to disable the second fire out signal)</summary>
+            <br/><b><i>xaddr </i></b> ControlCode, specifies the parameter to set, see TFireOutControl
+            <br/><b><i>state </i></b>Parameter value</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_FORCE_HEAD_VOLTAGE">
             <summary>head-specific. For SG600 head used to force HDC produce given voltage</summary>
@@ -307,6 +316,8 @@
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_INT_PD_COUNT_MAX">
             <summary>
+            <para>**** Deprecated.  Will be removed in a future release.  ***</para>
+            <para>*** The more flexible <see cref="F:Ttp.Meteor.SigExTypes.SIGEX_PRODUCT_DETECT_QUEUE"/> signal can be used to specify in advance how many internal PDs to generate. ***</para>
             <para>Set the maximum number of internal product detects to generate, counting from the point when SIG_CLEAR_PD_COUNT was last called.</para>  
             <para>To avoid a race condition, SIG_CLEAR_PD_COUNT should be called before the internal PD is enabled with SIG_PDINTERVAL.</para>
             <para>SIG_INT_PD_COUNT_MAX can be set before or after the internal product detect is enabled using SIG_PDINTERVAL.</para>
@@ -320,11 +331,17 @@
             <br/><b><i>state </i></b>[BITS23:0]Maximum number of internal product detects to generate during the current run
                                      [BIT31]If set, the internal PD is stopped the next time that (PD COUNT % MAX) == 0</summary>
         </member>
-        <member name="F:Ttp.Meteor.SigTypes.SIG_FIREOUT_WIDTH">
-            <summary>Configure the fire out pulse width; equivalent to the configuration file entry [Test] FireOutPulseWidth
-            <br/><b><i>pccnum </i></b>(1-N)
+        <member name="F:Ttp.Meteor.SigTypes.SIG_SET_HOME_OFFSET_PX">
+            <summary>
+            <para>Set the homing offset in pixels for all PCCs.</para>
+            <para>This is the value which will be set in the absolute X register when a home command is received, either via PiSetHome or via a 
+            trigger on the Product Detect input.  The value persists over multiple home commands.</para>
+            <para>*** It is important that the registers are fully written to the hardware before PiSetHome is called.  The application must set this
+            signal using the synchronous PiSetAndValidateSignal function and wait for it to return before calling PiSetHome or triggering the
+            PD input ***</para>
+            <br/><b><i>pccnum </i></b>unused (should be 0)
             <br/><b><i>hdcnum </i></b>unused (should be 0)
-            <br/><b><i>state </i></b>[Bits16:0] Fire-out pulse width in 12.5ns units</summary>
+            <br/><b><i>state </i></b>24 bit offset in pixels; the top bit can be interpreted as a signed bit if a negative offset is required.</summary>
         </member>
         <member name="F:Ttp.Meteor.SigTypes.SIG_PCC_DATACAP_CONTROL">
             <summary>PCC data capture control
@@ -350,7 +367,7 @@
             <summary>Spectra Nova/Galaxy/S-Class</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_HSS">
-            <summary>Xaar 1001/1002/1003 (HSS) </summary>
+            <summary>Legacy implementation for Xaar 1001/1002/1003/1006 (HSS) driven by HDC-HLM. Being deprecated. Use HT_Xaar100X instead for new designs </summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_KJ4">
             <summary>Kyocera KJ4</summary>
@@ -365,16 +382,16 @@
             <summary>Polaris.  ** Deprecated: use HT_PQ512. **</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_CF1">
-            <summary> ** Deprecated ** TTEC CF1</summary>
+            <summary>** Deprecated ** TTEC CF1</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_SPT_508GS">
-            <summary>Seiko 508 greyscale</summary>
+            <summary>** Deprecated ** Seiko 508 greyscale</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_RG4">
             <summary>Ricoh GEN4.  ** Deprecated: use HT_RicohGen4 or HT_RicohGen4L. **</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_RG5">
-            <summary>Ricoh Ricoh Gen5/Gen5S/Gen6 heads on HDC-R5</summary>
+            <summary>Ricoh Gen5/Gen5S/Gen6 heads on HDC-R5</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_LEXMARK">
             <summary>** Deprecated ** Lexmark (Yellowstone)</summary>
@@ -425,7 +442,7 @@
             <summary>Dimatix Fujifilm Samba head</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_GH2220">
-            <summary>Ricoh GH2220</summary>
+            <summary>** Deprecated ** Ricoh GH2220</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_KM_M600">
             <summary>Konica Minolta M600SH MEMS heads family</summary>
@@ -449,7 +466,7 @@
             <summary>TTEC CK3 head</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_GMA33">
-            <summary>Dimatix GMA33 head</summary>
+            <summary>** Deprecated ** Dimatix GMA33 head</summary>
         </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_Xaar2001">
             <summary>Xaar2001 2-head HDC</summary>
@@ -547,6 +564,24 @@
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_EPSON_D3000">
             <summary>Epson D3000 2 colour 1200-YDPI head.</summary>
         </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_Xaar100X">
+            <summary>New implementation for Xaar 1001/1002/1003/1006 and their more advanced variants (Nitrox) driven by HDC-HLM </summary>
+        </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_Xaar200X">
+            <summary>HDC-H2001 driving one Xaar2001/2002 head </summary>
+        </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_4Seiko_508GS">
+            <summary>4 Seiko 508GS heads driven by HDC-2Sii1536 and adapter board</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_PJU_20">
+            <summary>PJ unit with 20 "nozzles"</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_Ricoh_TH6310F">
+            <summary>Ricoh TH6310F head.</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eHEADTYPE.HT_EPSON_T3200">
+            <summary>Epson T3200 head.</summary>
+        </member>
         <member name="F:Ttp.Meteor.eHEADTYPE.HT_COUNT">
             <summary>Count of HT_xxx values</summary>
         </member>
@@ -567,7 +602,7 @@
             <summary>Head is not used</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_HDCPWR">
-            <summary>Head controller card is powered up</summary>
+            <summary>Head Driver Card (HDC) is powered up</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_HDPWRWAIT">
             <summary>Head power delay to reduce inrush current</summary>
@@ -582,7 +617,7 @@
             <summary>FPGA configuration is complete</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_WSYNC">
-            <summary>HDC is configured, waiting to check that config was successful</summary>
+            <summary>Head Driver Card (HDC) is configured, waiting to check that config was successful</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_SETUP">
             <summary>Head setup is in progress (e.g. waveform downloading)</summary>
@@ -597,7 +632,7 @@
             <summary>Vaa power applied</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_RUNNING">
-            <summary>Head is ready to print</summary>
+            <summary>Head Driver Card (HDC) is fully running.  Use the BMHS_CFGEND and BMHS_VCCEN bits in TAppHeadStatus::bmStatusBits to check when the head is ready to print.</summary>
         </member>
         <member name="F:Ttp.Meteor.eHeadState.ST_VAAOFF">
             <summary>Vaa power has been removed (Vcc power is still applied)</summary>
@@ -647,9 +682,6 @@
         </member>
         <member name="F:Ttp.Meteor.Bmps.BMPS_SPURIOUSPD">
             <summary>A spurious product detect error is flagged if a PD is detected during the lockout period (Ethernet platforms only)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.Bmps.BMPS_REG_DATA">
-            <summary>FPGA Register data valid</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmps.BMPS_CLEARACK">
             <summary>Acknowledge to Clear Memory command</summary>
@@ -703,7 +735,7 @@
             <summary>Right-Shift Value for aligning the field at the lsb of PCC State</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmps.BMPS2_DATA_XFER_ERROR">
-            <summary>USB transfer error detected. NOTE: Self clearing bit, so must check every time the status structure is read otherwise intermittent event could be missed.</summary>
+            <summary>PCC data transfer error detected. NOTE: Self clearing bit, so must check every time the status structure is read otherwise intermittent event could be missed.</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmps.BMPS2_PD_FAULT">
             <summary>PD fault indicates printing has stopped due to too many missing PDs when using AutoPD.  Self-clearing. </summary>
@@ -748,7 +780,7 @@
             <seealso cref="T:Ttp.Meteor.TAppHeadStatus"/>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_CFGEND">
-            <summary>Bit31, HDC FPGA config end. Can be used to determine if the head is powered.</summary>
+            <summary>Bit31, HDC FPGA config end. Can be used alongside BMHS_VCCEN to determine if the head is powered.</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_OVERCURRENT">
             <summary>Bit30, HDC/Head overcurrent</summary>
@@ -763,7 +795,7 @@
             <summary>Bit25, Always high</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_LOW">
-            <summary>Bit24, Always low</summary>
+            <summary>Bit24, Always low (Meteor internal use only)</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_IO">
             <summary>Bits[23..20] HDC I/O signals</summary>
@@ -775,7 +807,7 @@
             <summary>Bit19, Head VaaEnable readback</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_VCCEN">
-            <summary>Bit18,Head VccEnable readback. Can be used to determine if the head is powered.</summary>
+            <summary>Bit18,Head VccEnable readback. Can be used alongside BMHS_CFGEND to determine if the head is powered.</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_CFDNO">
             <summary>Bit17, Head CFDNO (Config Done) signal to indicate successful initialisation of the head (if applicable).</summary>
@@ -790,22 +822,7 @@
             <summary>Bits[7..0], ADC0 value</summary>
         </member>
         <member name="F:Ttp.Meteor.Bmhs.BMHS_HEAD_REQUIRED">
-            <summary>Bit24, Head required by config file. Used only in AppHeadStatus.bmStatusBits</summary>
-        </member>
-        <member name="T:Ttp.Meteor.Bmjs">
-            <summary>
-            Job status bit assignment in <c>FREG_JOB_MANAGER</c> and
-            <c>PccStatus.PccState</c>
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.Bmjs.BMJS_JOB_RUNNING">
-            <summary>Job running - not complete</summary>
-        </member>
-        <member name="F:Ttp.Meteor.Bmjs.BMJS_CURRENT_DOC">
-            <summary>Current document number</summary>
-        </member>
-        <member name="F:Ttp.Meteor.Bmjs.BMJS_COPIESTOGO">
-            <summary>"Copies to Go" for the current document</summary>
+            <summary>Bit24, Head/HDC required by config file.  Can be cleared by marking a HDC listed in the config file as "unused", using SIG_HDPOWER.</summary>
         </member>
         <member name="T:Ttp.Meteor.ePCCSTATE">
             <summary>
@@ -858,17 +875,55 @@
         <member name="F:Ttp.Meteor.TCompressionModes.Compression_Six_Grey_Levels">
             <summary>Reduce 4 bits per pixel down to 6 grey levels.</summary>
         </member>
+        <member name="T:Ttp.Meteor.TFireOutControl">
+            <summary>
+            SIG_FIREOUT_CONTROL operations codes
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_None">
+            <summary>Invalid value</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetPulse1_Delay">
+            <summary>Set FireOut Pulse1 delay in 12.5 ns units</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetPulse2_Delay">
+            <summary>Set FireOut Pulse2 delay in 12.5 ns units</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetPulse_Width">
+            <summary>Set FireOut Pulse width in 12.5 ns units</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetHDC">
+            <summary>Set HDC[1..8] for FireOut </summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetDelayPulses">
+            <summary>Delay FireOuts for a specified number of fire pulses </summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetNumberOfPulses">
+            <summary>Set number of FireOut pulses. 0 for unlimited </summary>
+        </member>
+        <member name="F:Ttp.Meteor.TFireOutControl.EFOCtrl_SetExpOff_Delay">
+            <summary>Set ExposureOFF delay in 12.5 ns units</summary>
+        </member>
+        <member name="T:Ttp.Meteor.TPccHwTestId">
+            <summary>
+            Id for the hardware tests that can be run on a PCC-E, see SIG_RUN_PCC_TEST
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.TPccHwTestId.EPccHwTest_UdpEcho">
+            <summary>UDP Echo test</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TPccHwTestId.EPccHwTest_TcpIp_DataPerf">
+            <summary>TCP/IP data transfer performance test</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TPccHwTestId.EPccHwTest_PccE_FwUpd">
+            <summary>PCC-E FW update</summary>
+        </member>
         <member name="T:Ttp.Meteor.MeteorConsts">
             <summary>
-            Constants
+            Leave it here to have Meteor Constants in MeteorFW.h file
             </summary>
             <summary>
             Constants used in the Printer Interface
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.MeteorConsts.MAX_HSS_ASICS">
-            <summary>
-            Max HSS ASICs per head
             </summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.JT_FLAG_CONTINUE">
@@ -887,7 +942,12 @@
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.JT_FLAG_ROTATEENABLE">
             <summary>
-            Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB"/> Job Type field to enable image rotation for the job
+            Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB"/> Job Type field to enable image rotation for the job.
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.MeteorConsts.JT_FLAG_FASTMASKENABLE">
+            <summary>
+            Flag can be set in the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_STARTJOB"/> Job Type field to enable fast masking for the job
             </summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.PCMD_BLOCK_FLAG">
@@ -906,7 +966,7 @@
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.APP_PCC_STATUS_VERSION">
             <summary>
-            Version of the <c><see cref="T:Ttp.Meteor.TAppPccStatus">TAppPccStatus</see></c> structure
+            OBSOLETE: This was previously used for the <see cref="F:Ttp.Meteor.TAppPccStatus.StructVersion"/> field.  TAppPccStatus.StructVersion now reports the TAppPccStatus structure size in bytes.
             </summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.APP_HEAD_STATUS_VERSION">
@@ -931,10 +991,10 @@
             <seealso cref="F:Ttp.Meteor.TCompactFlashStatus.Status"/>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.DATAPATH_OVERRIDE">
-            <summary>Bit set as part of the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK"/> command to override the dual FIFO datapath for the image</summary>
+            <summary>Obsolete: USB hardware only.  [ Bit set as part of the <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK"/> command to override the dual FIFO datapath for the image. ]</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.DATAPATH_SELECT">
-            <summary>Select which dual FIFO datapath to use for <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK"/> if <see cref="F:Ttp.Meteor.MeteorConsts.DATAPATH_OVERRIDE"/> is also set</summary>
+            <summary>Obsolete: USB hardware only.  [ Select which dual FIFO datapath to use for <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK"/> if <see cref="F:Ttp.Meteor.MeteorConsts.DATAPATH_OVERRIDE"/> is also set. ]</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.CF_HDIMAGE_FIRST_CMD">
             <summary>When an image is split into multiple <see cref="F:Ttp.Meteor.CtrlCmdIds.PCMD_CF_HDIMAGE_BLK"/> commands, this bit should be set for the first command</summary>
@@ -964,7 +1024,11 @@
             <summary>Maximum number of printhead nozzle rows which can be driven by a standard (LVDS connected) HDC </summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.MAX_PLANES">
-            <summary>Max number of colour planes</summary>
+            <summary>
+            <para>Max number of colour planes which support full PrintEngine / ScanEngine functionality.</para>
+            <para>For some applications it is possible to use extended plane indexes greater than 32 in the configuration file.</para>
+            <para>Some PrintEngine functionality is unavailable on Planes which have extended indexes.</para>
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.MAX_Y_INTERLACE">
             <summary>Max Y interlace levels</summary> 
@@ -1000,6 +1064,11 @@
             a different X resolution).  Subsystems must be split at PCC boundaries.
             </summary>
         </member>
+        <member name="F:Ttp.Meteor.MeteorConsts.MAX_WATERMARKS">
+            <summary>
+            The maximum number of watermarks allowed in a single image.
+            </summary>
+        </member>
         <member name="F:Ttp.Meteor.MeteorConsts.CPS_PRINTING">
             <summary>Bit set in TContinuousPrintStatus.StateFlags when printing is active</summary>
         </member>
@@ -1016,32 +1085,35 @@
             <summary>Special value to use in PCMD_SORT to select a combination of outputs specified by [ControllerN] SortMask</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_XOFFSETS">
-            <summary>Set this bit in PiReloadConfigValues to reload the X offsets from the config file</summary>
+            <summary>Set this bit (BIT0) in PiReloadConfigValues to reload the X offsets from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_YOFFSETS">
-            <summary>Set this bit in PiReloadConfigValues to reload the Y offsets from the config file</summary>
+            <summary>Set this bit (BIT1) in PiReloadConfigValues to reload the Y offsets from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_WFMS">
-            <summary>Set this bit in PiReloadConfigValues to reload the waveform filenames from the config file</summary>
+            <summary>Set this bit (BIT2) in PiReloadConfigValues to reload the waveform filenames from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_DISABLED_NOZZLES">
-            <summary>Set this bit in PiReloadConfigValues to reload the [Planes] DisabledNozzlesPlaneN entries from the config file</summary>
+            <summary>Set this bit (BIT3) in PiReloadConfigValues to reload the [Planes] DisabledNozzlesPlaneN entries from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_IMAGE_STORE_PARAMS">
-            <summary>Set this bit in PiReloadConfigValues to reload the image store related parameter from the config file
+            <summary>Set this bit (BIT4) in PiReloadConfigValues to reload the image store related parameter from the config file
             Should only be used for changes in [PCC8Flash] ReadMaskPdSyncOffset and ReadMaskImageLength; other changes require a re-init</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_ADJUST_COLOUR_BALANCE">
-            <summary>Set this bit in PiReloadConfigValues to reload the [Planes] AdjustColourBalancePlaneN entries from the config file</summary>
+            <summary>Set this bit (BIT5) in PiReloadConfigValues to reload the [Planes] AdjustColourBalancePlaneN entries from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_SCREEN_MODES">
-            <summary>Set this bit in PiReloadConfigValues to reload the [ScreenModeN] sections from the config file</summary>
+            <summary>Set this bit (BIT6) in PiReloadConfigValues to reload the [ScreenModeN] sections from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_NOZZLE_COMPENSATION">
-            <summary>Set this bit in PiReloadConfigValues to reload the [NozzleCompensation] and [InterplanePlaneN] sections from the config file</summary>
+            <summary>Set this bit (BIT7) in PiReloadConfigValues to reload the [NozzleCompensation] and [InterplanePlaneN] sections from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_WATERMARK">
-            <summary>Set this bit in PiReloadConfigValues to reload the [Watermark] section from the config file</summary>
+            <summary>Set this bit (BIT8) in PiReloadConfigValues to reload the [Watermark] section from the config file</summary>
+        </member>
+        <member name="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_TEMPERATURE_CONTRACTION">
+            <summary>Set this bit (BIT9) in PiReloadConfigValues to reload the [TemperatureContraction] section from the config file</summary>
         </member>
         <member name="F:Ttp.Meteor.MeteorConsts.MAX_MULTICHANNEL_FILE_BUFFERS">
             <summary>Maximum number of image buffers that can be loaded from a multichannel image file</summary>
@@ -1307,23 +1379,6 @@
         <member name="F:Ttp.Meteor.Hdws.HDWS_FLG_TICKLE_WF">
             <summary> bit flag, specifies that error code applies to the ticking waveform </summary>
         </member>
-        <member name="T:Ttp.Meteor.eSTATUS">
-            <summary>
-            V2 Status request structure.
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.eSTATUS.SS_NOT_REQUESTED">
-            <summary>Data has not been requested</summary>
-        </member>
-        <member name="F:Ttp.Meteor.eSTATUS.SS_WAITING">
-            <summary>Data has not yet arrived</summary>
-        </member>
-        <member name="F:Ttp.Meteor.eSTATUS.SS_READY">
-            <summary>Data ready to be collected from the port</summary>
-        </member>
-        <member name="F:Ttp.Meteor.eSTATUS.SS_FAULT">
-            <summary>Serious fault, disconnect requested</summary>
-        </member>
         <member name="T:Ttp.Meteor.CfMaskModes">
             <summary>
             Mask mode parameter supplied with PCMD_CFIMAGE (in ms 4 bits of xstart)
@@ -1481,7 +1536,7 @@
             <para>Cmd[1] = 4 (DWORD count); optionally 3 + N where N is the number of subsystems, if independent document widths are required</para>
             <para>Cmd[2] = Job ID</para>
             <para>Cmd[3] = Job Type <see cref="T:Ttp.Meteor.eJOBTYPE">eJOBTYPE</see>, ORed with optional job type flags <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_CONTINUE"/>,
-                           <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_RIGHTALIGN"/>, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_ROTATEENABLE"/></para>
+                           <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_RIGHTALIGN"/>, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_ROTATEENABLE"/></para>, <see cref="F:Ttp.Meteor.MeteorConsts.JT_FLAG_FASTMASKENABLE"/>
             <para>Cmd[4] = Resolution <see cref="T:Ttp.Meteor.eRES">eRES</see></para>
             <para>Cmd[5] = Document width (ignored for scanning or continuous print unless BM_PDLOCKOUT enabled)</para>
             <para>Cmd[6] = Optional; document width for subsystem 2 in a mixed head type or mixed resolution configuration</para>
@@ -1514,7 +1569,7 @@
             <para><c>SendImage</c> command id</para>
             <para>Cmd[0] = PCMD_IMAGE</para>
             <para>Cmd[1] = Command DWORD count (4 + image DWORDs)</para>
-            <para>Cmd[2] = [Bits7:0] Plane (1-<see cref="F:Ttp.Meteor.MeteorConsts.MAX_PLANES">MAX_PLANES</see>); other bits reserved (must be zero)</para>
+            <para>Cmd[2] = [Bits7:0] Plane (1-128); other bits reserved (must be zero)</para>
             <para>Cmd[3] = XLeft (pixels) or XStart (pixels) for scanning or continuous print; XRight (pixels) if JT_FLAG_RIGHTALIGN is set</para>
             <para>Cmd[4] = YTop (pixels)</para>
             <para>Cmd[5] = Width (pixels)</para>
@@ -1880,7 +1935,7 @@
             <para>Cmd[10] = First page to RIP (0 for all pages)</para>
             <para>Cmd[11] = Last page to RIP (0 for all pages)</para>
             <para>Cmd[12] = Control flags: 
-                            [BITS1:0] rotate in multiples of 90 degrees: 0 = 0; 1 = -90; 2 = 180; 3 = -90; 
+                            [BITS1:0] rotate in multiples of 90 degrees: 0 = 0; 1 = -90; 2 = 180; 3 = 90; 
                             [BIT2] set = mirror along the X axis
                             [BIT3] set = TAppStatus.TracerCount increments once each page is loaded to the hardware (Ethernet only)
                             [BIT4] clear = FIFO; set = PRELOAD
@@ -1895,6 +1950,7 @@
         <member name="F:Ttp.Meteor.CtrlCmdIds.PCMD_ROTATE">
             <summary>
             <para><c>Rotate an image in range of [-45, +45] degrees immediately before translating.</c></para>
+            <para>It can also be used to scale the image in x and y before rotating (or set angle to 0 to scale without rotation).</para>
             <para>See the Image Rotation Application Note for more examples and explanation.</para>
             <para>Images with a large aspect ratio cannot be rotated as far, a 4:1 image can only be rotated by ~[-14,+14]. Limitation for this is
                   tan(|angle|) &lt; height/width.</para>
@@ -1902,12 +1958,14 @@
                   Therefore it is highly recommended that you enable fast translation and parallel translation.</para>
             <para>This command must be sent before each image command sent, if it is not and image rotation is enabled then the print will abort.</para>
             <para>Cmd[0] = PCMD_ROTATE</para>
-            <para>Cmd[1] = 5 (command DWORD count)</para>
+            <para>Cmd[1] = 7 (command DWORD count)</para>
             <para>Cmd[2] = Signed 32-bit integer describing rotation angle in 10^-7 degree steps, i.e. rotation angle = Cmd[2]/10^7.</para>
             <para>Cmd[3] = Optional additional adjustment in x (pixels) where the coordinate system has been rotated with the image.</para>
             <para>Cmd[4] = Optional additional adjustment in y (pixels) where the coordinate system has been rotated with the image.</para>
             <para>Cmd[5] = Tile width, required if the image is a different size to the tile activating the product detect. 0 => use image width.</para>
             <para>Cmd[6] = Tile height, required if the image is a different size to the tile activating the product detect. 0 => use image height.</para>
+            <para>Cmd[7] = Optional signed 32-bit integer to scale the width of the image up or down, new width (px) = image width + this value.</para>
+            <para>Cmd[8] = Optional signed 32-bit integer to scale the height of the image up or down, new height (px) = image height + this value.</para>
             </summary>
         </member>
         <member name="F:Ttp.Meteor.CtrlCmdIds.PCMD_NOZZLECOMP">
@@ -1972,6 +2030,38 @@
             <para>Cmd[1] = 0 (command DWORD count)</para>
             </summary>
         </member>
+        <member name="F:Ttp.Meteor.CtrlCmdIds.PCMD_SET_COPIES_PER_PCC">
+            <summary>
+            <para><c>Set the number of copies of each document to print on a (master) PCC basis.  This is used for bottle printing, where some
+            stations may print multiple copies of the image (e.g. for undercoat or overcoat).  It also allows printing on some PCCs to be completely 
+            omitted from the job.  Send with zero command DWORDs to turn off per-PCC image copy mode.</c></para>
+            <para>Note that the document ID (if used) is generated when the notify head receives the product detect for the *first* copy of the document.
+            Subsequent copies do not generate document IDs.  The PrintCount increments when all copies of the document have started to print on all PCCs.</para>
+            <para>Cmd[0] = PCMD_COPIES_PER_PCC</para>
+            <para>Cmd[1] = Pcc Count (command DWORD count: 1 DWORD per PCC).  Zero resets any previously set per-PCC copy parameters.</para>
+            <para>Cmd[2 .. N] Number of image copies per (master) PCC.</para>
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.CtrlCmdIds.PCMD_FASTMASK">
+            <summary>
+            <para><c>Mask an image using a given set of 4 coordinates immediately before translating.
+            Any image data outside of the quadrilateral will be set to white. This can be used to avoid printing ink off the edge of the media.</c></para>
+            <para>The 4 coordinates must form a convex quadrilateral.</para>
+            <para>Sufficient time must be given to the PrintEngine to mask and translate the image before media reaches the print heads.
+                  Therefore it is highly recommended that you enable fast translation and parallel translation.</para>
+            <para>This command must be sent before each image command sent, if it is not and fast masking is enabled then the print will abort.</para>
+            <para>Cmd[0] = PCMD_FASTMASK</para>
+            <para>Cmd[1] = 8 (command DWORD count)</para>
+            <para>Cmd[2] = Top left coordinate X position (in px).</para>
+            <para>Cmd[3] = Top left coordinate Y position (in px).</para>
+            <para>Cmd[4] = Bottom left coordinate X position (in px).</para>
+            <para>Cmd[5] = Bottom left coordinate Y position (in px).</para>
+            <para>Cmd[6] = Bottom right coordinate X position (in px).</para>
+            <para>Cmd[7] = Bottom right coordinate Y position (in px).</para>
+            <para>Cmd[8] = Top right coordinate X position (in px).</para>
+            <para>Cmd[9] = Top right coordinate Y position (in px).</para>
+            </summary>
+        </member>
         <member name="T:Ttp.Meteor.eCFGPARAM">
             <summary>
             Config parameter identifiers.
@@ -2026,19 +2116,15 @@
             <br/><b><i>value </i></b>Head reference voltage (Vr in 100mV steps) for voltage / temperature adjustment; zero to use default value from config file
             If pcc and head are both set to zero then anum is ignored and value is applied to every head and/or nozzle row</summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_TEMP_L">
-            <summary><b>Head Types: </b> HT_SPT_508GS
-            <br/><b><i>anum </i></b>0 or 1 
-            <br/><b><i>pcc </i></b>1 - n
-            <br/><b><i>head </i></b>1 - n
-            <br/><b><i>value </i></b>Head reference temp (Tr)</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_TEMP_L__Obsolete">
+            <summary>
+            Obsolete.  Use <see cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_RefTemp"/> for head types which support voltage / temperature adjustment.
+            </summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_GRAD">
-            <summary><b>Head Types: </b> HT_SPT_508GS
-            <br/><b><i>anum </i></b>0 or 1 
-            <br/><b><i>pcc </i></b>1 - n
-            <br/><b><i>head </i></b>1 - n
-            <br/><b><i>value </i></b>Head temp adjust gradient (G)</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_GRAD__Obsolete">
+            <summary>
+            Obsolete.  Use <see cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_Gradient"/> for head types which support voltage / temperature adjustment.
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_WFILE">
             <summary><b>Deprecated.  Use CCP_HEAD_WFILE_EX.</b></summary>
@@ -2058,12 +2144,16 @@
             <br/><b><i>value </i></b>Y-adjust for JA1 (pixels - signed).  Offset is applied to "Yseparation" config file setting.</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_TEMP">
-            <summary><b>Head Types: </b>HT_SPECTRA, HT_KJ4,  HT_SPT_508GS, HT_RG5, HT_STARFIRE.  For other head types see <seealso cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_TargetTemp"/>.
-            N.B. With HT_RG5, either CCP_HEAD_TEMP or CPEX_TargetTemp can be used; CPEX_TargetTemp is preferred for new applications.
+            <summary>
+            <para>** Legacy parameter.  Use <seealso cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_TargetTemp"/> to set the temperature target for all new applications. **</para>
+            <para>** Migrating from CCP_HEAD_TEMP to <seealso cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_TargetTemp"/> is recommended. **</para>
+            <para>
+            <b>Head Types for legacy compatibility: </b>HT_SPECTRA, HT_KJ4, HT_RG5, HT_STARFIRE.
+            </para>
             <br/><b><i>anum </i></b>unused (should be 0)
             <br/><b><i>pcc </i></b>0 (all heads) or 1 - n
             <br/><b><i>head </i></b>0 (all heads) or 1 - n
-            <br/><b><i>value </i></b>Target head temperature (0.1C).  Set to zero to use default config file value.</summary>
+            <br/><b><i>value </i></b>** Legacy parameter: use CPEX_TargetTemp ** [Deprecated target head temperature (0.1C).  Set to zero to use default config file value.]</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_JA1_VOLTAGE1">
             <summary><b>Head Types: </b>HT_SPECTRA
@@ -2226,11 +2316,16 @@
             <br/><b><i>value </i></b>KJ4 palette mapping (0 - 7), see user manual for details</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_AUX_TEMP">
-            <summary><b>Head Types: </b>HT_STARFIRE, HT_KJ4, 
+            <summary>
+            <para>** Legacy parameter.  Use <seealso cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_AuxTargetTemp"/> to set the aux. temperature target for all new applications. **</para>
+            <para>** Migrating from CCP_AUX_TEMP to <seealso cref="F:Ttp.Meteor.eCFGPARAMEx.CPEX_AuxTargetTemp"/> is recommended. **</para>
+            <para>
+            <b>Head Types for legacy compatibility: </b>HT_SPECTRA, HT_STARFIRE, HT_KJ4.
+            </para>
             <br/><b><i>anum </i></b>unused (should be 0)
             <br/><b><i>pcc </i></b>1 - n, 0 for all pccs/heads
             <br/><b><i>head </i></b>1 - n, 0 for all pccs/heads
-            <br/><b><i>value </i></b>Auxiliary temperature set point (0.1C)</summary>
+            <br/><b><i>value </i></b>** Legacy parameter: use CPEX_AuxTargetTemp. ** [Deprecated auxiliary temperature set point (0.1C)]</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_BITS_PER_PIXEL">
             <summary><b>Head Types: </b>All
@@ -2269,14 +2364,16 @@
             <br/><b><i>anum </i></b>unused (should be 0)
             <br/><b><i>pcc </i></b>1 - n
             <br/><b><i>head </i></b>unused (should be 0)
-            <br/><b><i>value </i></b>Specify a GPIO output to strobe when the printhead fires: used to generate a signal synchronously with printhead firing.  1-4 sets the matching I/O to strobe, 0 disables the fire out.</summary>
+            <br/><b><i>value </i></b>
+            value Byte0 specifies GP output to strobe when the printhead fires: used to generate a signal synchronously with printhead firing. 1-4 sets GPO number, 0 disables the fire out.
+            value Byte1 specifies GP output to strobe Exposure control:  1-4 sets GPO number, 0 Exposure control.</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_STATUS_UPDATE_MS">
             <summary><b>Head Types: </b>All
             <br/><b><i>anum </i></b>unused (should be 0)
             <br/><b><i>pcc </i></b>unused (should be 0)
             <br/><b><i>head </i></b>unused (should be 0)
-            <br/><b><i>value </i></b>Set the PCC status update interval.  Default is 150ms.  Use with care as a shorter interval can reduce available print data bandwdith.</summary>
+            <br/><b><i>value </i></b>Set the sleep interval which the PC uses when polling for PCC status.  The default, and maximum, is 10ms.  Larger values are ignored.</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_SET_CONTINUOUS_PRINT">
             <summary><b>Head Types: </b>All
@@ -2299,33 +2396,17 @@
             <br/><b><i>head </i></b>unused (should be 0)
             <br/><b><i>value </i></b>Set KJ4 CLK2 frequency, in units of 0.1MHz, from 5MHz to 40MHz</summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_YSCALE">
-            <summary><b>Head Types: </b>HT_LEXMARK *** Deprecated
-            <br/><b><i>anum </i></b>unused (should be 0)
-            <br/><b><i>pcc </i></b>unused (should be 0)
-            <br/><b><i>head </i></b>unused (should be 0)
-            <br/><b><i>value </i></b>Set Y-scale multiplier, 1, 2, 4 or 8 (Lexmark head)</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_YSCALE__Obsolete">
+            <summary><b>Obsolete (was CCP_YSCALE)</b></summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_XSCALE">
-            <summary><b>Head Types: </b>HT_LEXMARK *** Deprecated
-            <br/><b><i>anum </i></b>unused (should be 0)
-            <br/><b><i>pcc </i></b>unused (should be 0)
-            <br/><b><i>head </i></b>unused (should be 0)
-            <br/><b><i>value </i></b>Set X-scale multiplier, 1, 2, 4 or 8 (Lexmark head)</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_XSCALE__Obsolete">
+            <summary><b>Obsolete (was CCP_XSCALE)</b></summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_TEMP2">
-            <summary><b>Head Types: </b>HT_SPECTRA
-            <br/><b><i>anum </i></b>unused (should be 0)
-            <br/><b><i>pcc </i></b>0 (all heads) or 1 - n
-            <br/><b><i>head </i></b>0 (all heads) or 1 - n
-            <br/><b><i>value </i></b>Target JA2 head temperature (0.1C).  0 (default) means use HEAD_TEMP value.</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_TEMP2__Obsolete">
+            <summary><b>Obsolete (was CCP_HEAD_TEMP2)</b></summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_AUX_TEMP2">
-            <summary><b>Head Types: </b> All
-            <br/><b><i>anum </i></b>unused (should be 0)
-            <br/><b><i>pcc </i></b>0 (all heads) or 1 - n
-            <br/><b><i>head </i></b>0 (all heads) or 1 - n
-            <br/><b><i>value </i></b>Auxiliary2 temperature set point.  0 (default) means use AUX_TEMP</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_AUX_TEMP2__Obsolete">
+            <summary><b>Obsolete (was CCP_AUX_TEMP2)</b></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_REVERSE_DIR">
             <summary><b>Head Types: </b>All
@@ -2403,7 +2484,7 @@
             <br/><b><i>head </i></b>1 - n
             <br/><b><i>value </i></b>Signed offset in microns from the nominal row or colour separation.  Rounded to 1/16 pixel after DPI scaling.</summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_WFM_VSCALE_MODE">
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_WFM_VSCALE_MODE__Obsolete">
             <summary><para>*** Obsolete.  Use CPEX_WF_VScaleMode with PiSetParamEx instead. ***</para>
             <b>Head Types: </b>HT_RG4, HT_RG5, HT_GH2220 (N.B. HT_RG4 is now obsolete, use HT_RicohGen4 or HT_RicohGen4L)
             <br/><b><i>anum </i></b>unused (should be 0)
@@ -2418,12 +2499,10 @@
             <br/><b><i>head </i></b>unused (should be 0)
             <br/><b><i>value </i></b>** Do not use in production, this is for internal Meteor unit testing to switch between scanning mode (non-zero) and single pass mode (zero). **</summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_PRINT_DETECT_ENABLE">
-            <summary><b>Head Types: </b>HT_SPECTRA
-            <br/><b><i>anum </i></b>unused (should be 0)
-            <br/><b><i>pcc </i></b>1 - n
-            <br/><b><i>head </i></b>1 - 4
-            <br/><b><i>value </i></b>Enable (1) or disable (0) print data detection for every document.  Datamix mode only.  Only used for USB PCCs.</summary>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_PRINT_DETECT_ENABLE__Obsolete">
+            <summary>
+            Obsolete (previously available on PCC8 + HT_SPECTRA only).
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_KHEAD_DSEL">
             <summary><b>Head Types: </b>HT_K1200, HT_K600
@@ -2446,13 +2525,13 @@
             <br/><b><i>head </i></b>1 - n
             <br/><b><i>value </i></b>Signed offset in 1/100th print clocks from the nominal row position for bi-directional reverse-pass in scanning mode, rounded to 1/16 pixel for printing.</summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_KHEAD_TEMP_LIMITS">
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_KHEAD_TEMP_LIMITS__Obsolete">
             <summary><b>Obsolete.  Use CPEX_TemperatureUpperLimit and CPEX_TemperatureLowerLimit.</b></summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_K300_ABS_VOLTAGE">
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_K300_ABS_VOLTAGE__Obsolete">
             <summary><b>Obsolete.  Use CPEX_HeadVoltageAbs.</b></summary>
         </member>
-        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_K600_ABS_VOLTAGE">
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_K600_ABS_VOLTAGE__Obsolete">
             <summary><b>Obsolete.  Use CPEX_HeadVoltageAbs.</b></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_HEAD_FIRST_ACTIVE_NOZZLE">
@@ -2650,6 +2729,13 @@
             <br/><b><i>head </i></b>unused (should be 0)
             <br/><b><i>value </i></b>Stitch width in pixels</summary>
         </member>
+        <member name="F:Ttp.Meteor.eCFGPARAM.CCP_REDUCE_PRINT_DATA">
+            <summary> Set to remove print-lines from the image
+            <br/><b><i>anum </i></b>unused (should be 0)
+            <br/><b><i>pcc </i></b>unused (should be 0)
+            <br/><b><i>head </i></b>unused (should be 0)
+            <br/><b><i>value </i></b>Ratio of print-lines to keep * 1e7. Input / 1e7 should be in range (0,1]. Set to 0 to disable.</summary>
+        </member>
         <member name="F:Ttp.Meteor.eCFGPARAM.CCP_INTERNAL_0">
             <summary><b> Meteor internal use.</b></summary>
         </member>
@@ -2711,7 +2797,9 @@
             <summary>Dummy value, not a real parameter</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_X_Offset">
-            <summary>Nozzle Rows X offsets (centi-pixels)</summary>
+            <summary>Absolute Nozzle Rows X offsets (in centi-pixels, 1/100 of a pixel units). Has the same meaning as "Xoffsets" parameter in Meteor config file. Use this parameter to "set" head positions.
+            If you want to _adjust_ head/nozzle row position relatively to the "already set" ones, use CPEX_Head_XAdjust_cpix parameter
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_Y_Offset">
             <summary>Head Y offset from the configuration file. Values in pixels.</summary>
@@ -2733,8 +2821,7 @@
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_TargetTemp">
             <summary><para>Target temperature</para>
-            <para>Head Types: HT_KM130, HT_KM_M600, HT_KM1024I, HT_KM1800I, HT_KM1800I_SH, HT_KM1024, HT_KM1024A, HT_SPT_1024GS, HT_SPT_RC1536, HT_SEIKO_SRC1800, 
-                  HT_SG600, HT_KY1200RM, HT_QS256, HT_PQ512, HT_RicohGen4, HT_RicohGen4L, HT_RG5</para></summary>
+            <para>Head Types: All currently supported head types.</para></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_TemperatureUpperLimit">
             <summary><para>Head temperature upper limit for the Kyocera print heads with in-built temperature control</para>
@@ -2790,15 +2877,16 @@
             </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_WF_VScaleCoeff">
-            <summary><para>Waveform voltage scale coefficient Range:[0.5 to  1.5]</para>
+            <summary><para>Waveform voltage scale coefficient Range:[0.5 to 1.5]</para>
             <para>Head Types: HT_SAMBA, HT_GMA33, HT_GMA99, HT_SG600, HT_KM130, HT_KM_M600, HT_KM1024I (scales VH2 only), HT_KM1800I (scales VH2 only), 
                   HT_KM1800I_SH (scales VH2 only), HT_KM1024 (scales VH2 only), HT_KM1024A (scales COM2 only), HT_Xaar1201, HT_RicohGen4, HT_RicohGen4L, 
                   HT_GH2220, HT_RicohGen5, , HT_STARFIRE, HT_PQ512, HT_QS256, HT_EPSON_S3200</para></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_HeadVoltageAdj">
-            <summary>Head voltage adjust, 1mv resolution</summary>
+            <summary>Head voltage adjust, 1mv resolution
             <para>Head Types: HT_K1200 (1 adjustment per head), HT_K600 (1 adjustment per head), HT_K300 (2 adjustments per head), 
-                              HT_K150 (2 adjustments per head), HT_Xaar2001 (4 adjustments per head, 1 per nozzle row)</para>
+                              HT_K150 (2 adjustments per head), HT_Xaar2001 (4 adjustments per head, 1 per nozzle row),
+                              HT_Xaar100X (2 adjustments per head, 1 per nozzle row)</para></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_DrivingStopFunction">
             <summary><para>Driving Stop function control; this "terminates operation of printhead when driver IC reaches a specified temperature"</para>
@@ -2821,7 +2909,7 @@
             <para>Head Types: HT_KM1800I</para></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_Head_XAdjust_cpix">
-            <summary>User head X position adjustment in 1/100 of a pixel</summary>
+            <summary>User Nozzle row X position adjustment in 1/100 of a pixel</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_HeadOprMode">
             <summary>HDC/Head OPR mode, KM1800I and KM1024I specific</summary>
@@ -2847,28 +2935,28 @@
             <para>Head Types: HT_RG5</para></summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim0">
-            <summary> Voltage Trim0, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim0, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim1">
-            <summary> Voltage Trim1, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim1, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim2">
-            <summary> Voltage Trim2, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim2, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim3">
-            <summary> Voltage Trim3, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim3, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim4">
-            <summary> Voltage Trim4, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim4, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim5">
-            <summary> Voltage Trim5, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim5, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim6">
-            <summary> Voltage Trim6, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim6, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim7">
-            <summary> Voltage Trim7, used to adjust individual ASIC voltages on Xaar 2001 head </summary>
+            <summary> Voltage Trim7, used to adjust individual ASIC voltages on HT_Xaar100X and HT_Xaar2001 </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_VoltageTrim8">
             <summary> Voltage Trim8, just a placeholder </summary>
@@ -2928,7 +3016,7 @@
             <summary>Palette register value for the heads that read it from config file (4CF1)</summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_Hdc_TemperatureUpperLimit">
-            <summary> HDC PCB (psu/amplifiers) overtemperature limit </summary>
+            <summary> HDC PCB (psu/amplifiers) overtemperature limit for TTEC CF3/CK3 heads </summary>
         </member>
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_AuxTargetTemp">
             <summary> Aux control target temperature</summary>
@@ -3038,6 +3126,21 @@
         <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_DSelSignals">
             <summary>'DSEL' signals value for some of the Kyocera heads. Values: 0-3. (HT_K150,HT_K300,HT_K600,HT_K1200,HT_KJ4) </summary>
         </member>
+        <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_SClk">
+            <summary>HDC-HLM SClk period in ns </summary>
+        </member>
+        <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_WorkToTickleWfScaleCoeff">
+            <summary>XeroxW specific scaling coefficient for making tickling WF from a working one</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_PulseWidth">
+            <summary>Pulse width for HT_SPECTRA</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_PulseRampUp">
+            <summary>Pulse ramp up time for HT_SPECTRA </summary>
+        </member>
+        <member name="F:Ttp.Meteor.eCFGPARAMEx.CPEX_PulseRampDown">
+            <summary>Pulse ramp down time for HT_SPECTRA </summary>
+        </member>
         <member name="T:Ttp.Meteor.eCfgStringPool">
             <summary>
             <para>Definition of StringPool IDs.</para>
@@ -3095,6 +3198,9 @@
         </member>
         <member name="F:Ttp.Meteor.eCfgStringPool.KSP_SwGeometryMask_FN">
             <summary>string Pool Id for storing swath geometry masks file names (mostly for putting them into status report).</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eCfgStringPool.KSP_ColourBalanceGradients">
+            <summary>string Pool Id for storing colour balance gradients (for use in Nozzle Pattern Detection).</summary>
         </member>
         <member name="T:Ttp.Meteor.eRET">
             <summary>
@@ -3215,6 +3321,15 @@
         <member name="F:Ttp.Meteor.eRET.RVAL_ABORTED">
             <summary>A blocked command was aborted</summary>
         </member>
+        <member name="F:Ttp.Meteor.eRET.RVAL_PARAMID_NOT_REGISTERED">
+            <summary>An attempt to set an eCFGPARAMEx in a scope where the current head type doesn't use the parameter</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eRET.RVAL_FAILED_TO_CREATE_PROCESS">
+            <summary>Failed to create a sub-process (e.g. for status report creation)</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eRET.RVAL_TIMEOUT">
+            <summary>An operation timed out</summary>
+        </member>
         <member name="T:Ttp.Meteor.eMONITORCMD">
             <summary>
             Command opcodes that a print application can send to the Meteor Monitor program
@@ -3252,19 +3367,19 @@
             <seealso cref="T:Ttp.Meteor.TAppStatus"/>
         </member>
         <member name="F:Ttp.Meteor.TPreloadPathInfo.DocsSent">
-            <summary>Documents sent to the Meteor hardware</summary>
+            <summary>Number of different documents sent to the Meteor hardware's preload datapath during the current print job.</summary>
         </member>
         <member name="F:Ttp.Meteor.TPreloadPathInfo.TotalCopies">
-            <summary>Total copies to be printed since initialisation</summary>
+            <summary>Total copies sent to be printed from the preload datapath during the current print job (the sum of the copy count for each preload document).</summary>
         </member>
-        <member name="F:Ttp.Meteor.TPreloadPathInfo.CurrentDoc">
-            <summary>Document number printing now</summary>
+        <member name="F:Ttp.Meteor.TPreloadPathInfo.CurrentDoc_obsolete">
+            <summary>Obsolete: Document number printing now on USB hardware</summary>
         </member>
-        <member name="F:Ttp.Meteor.TPreloadPathInfo.CopiesToGo">
-            <summary>Copies of this doc left to print</summary>
+        <member name="F:Ttp.Meteor.TPreloadPathInfo.CopiesToGo_obsolete">
+            <summary>Obsolete: Copies of this doc left to print on USB hardware</summary>
         </member>
-        <member name="F:Ttp.Meteor.TPreloadPathInfo.DocsToGo">
-            <summary>Documents left to go</summary>
+        <member name="F:Ttp.Meteor.TPreloadPathInfo.DocsToGo_obsolete">
+            <summary>Obsolete: Documents left to go on USB hardware</summary>
         </member>
         <member name="T:Ttp.Meteor.TFifoPathInfo">
             <summary>Status info regarding the Fifo path</summary>
@@ -3272,7 +3387,7 @@
         </member>
         <member name="F:Ttp.Meteor.TFifoPathInfo.DocsSent">
             <summary>
-            Documents sent
+            Documents sent to the Meteor hardware's fifo datapath during the current print job.
             </summary>
         </member>
         <member name="T:Ttp.Meteor.TAppStatus">
@@ -3297,6 +3412,8 @@
         <member name="F:Ttp.Meteor.TAppStatus.NumPlanes">
             <summary>Number of defined colour planes</summary>
             <seealso cref="F:Ttp.Meteor.MeteorConsts.MAX_PLANES"/>
+            <remarks>Note that although plane indexes are normally contiguous, this is not mandatory, so in some configurations the maximum plane 
+                    index can be greater than NumPlanes.</remarks>
         </member>
         <member name="F:Ttp.Meteor.TAppStatus.Yinterlace_deprecated">
             <summary>This field is deprecated</summary>
@@ -3414,8 +3531,10 @@
             </summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.StructVersion">
-            <summary><see cref="F:Ttp.Meteor.MeteorConsts.APP_PCC_STATUS_VERSION">Structure version</see></summary>
-            <seealso cref="F:Ttp.Meteor.MeteorConsts.APP_PCC_STATUS_VERSION"/>
+            <summary>
+            <para>Size of the TAppPccStatus structure in bytes.</para>
+            <para>N.B. Prior to version v4.6.33054.22 this was hard-wired to APP_PCC_STATUS_VERSION (4).</para>
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.IoSignals">
             <summary>I/O signal states for PCC and HDCs. Bits[31..24] represent PCC GPIO state, bits [3..0] represent HDC1 GPIO state....bits [15..12] represent HDC8 GPIO state </summary>
@@ -3424,12 +3543,11 @@
             <summary>Status word from PCC, BMPS_xxx, see <see cref="T:Ttp.Meteor.Bmps">Bmps</see></summary>
             <seealso cref="T:Ttp.Meteor.Bmps"/>
         </member>
-        <member name="F:Ttp.Meteor.TAppPccStatus.JobStatus">
-            <summary>Job Manager status</summary>
-            <seealso cref="T:Ttp.Meteor.Bmjs"/>
+        <member name="F:Ttp.Meteor.TAppPccStatus.JobStatus_obsolete">
+            <summary>Obsolete: previously this was the USB Job Manager status</summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.FpgaVersion">
-            <summary>Fpga Version number</summary>
+            <summary>Fpga Version number (unused)</summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.FwVersion">
             <summary>Print Controller firmware version number</summary>
@@ -3444,7 +3562,9 @@
             <summary>FaultRegister</summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.AbsXCount">
-            <summary>Absolute x count</summary>
+            <summary>Absolute X count. Unsigned 24-bit value, so, wraps around 24 bits when increases. 
+            In scanning mode can become negative value, which will need to be treated as 2s complement 24-bit code(I.e -1 will be presented as 2^24 -1 == 16777215)
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.EncoderCount">
             <summary>Encoder count</summary>
@@ -3482,7 +3602,15 @@
             <summary>Document print count for lane 2 (dual-lane Ethernet configuration only)</summary>
         </member>
         <member name="F:Ttp.Meteor.TAppPccStatus.IpV4Addr">
-            <summary>PCC-E IpV4 address</summary>
+            <summary>PCC IpV4 address</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TAppPccStatus.MaxHdcs">
+            <summary>The maximum number of (logical) Hdcs which the PCC supports</summary>
+        </member>
+        <member name="F:Ttp.Meteor.TAppPccStatus.FpgaTimestamp_ms">
+            <summary> 1ms timestamp from FPGA timer. Can be used to calculate time interval between status packets.
+            Note that this is an unsigned 32-bit value and needs to be treated as unsigned. N.B will overflow and roll over every 49.7 days.
+            </summary>
         </member>
         <member name="T:Ttp.Meteor.eVoltageState">
             <summary>
@@ -3585,7 +3713,7 @@
             <summary>Timeout occurred when waiting for response to write delay settings</summary>
         </member>
         <member name="F:Ttp.Meteor.eDelaySettingState.DELAY_COMPLETE">
-            <summary>Delay setting programming has completed sucessfully</summary>
+            <summary>Delay setting programming has completed successfully</summary>
         </member>
         <member name="F:Ttp.Meteor.eDelaySettingState.DELAY_NOT_USED">
             <summary>The status field is not used for the current head type</summary>
@@ -3830,11 +3958,19 @@
         <member name="F:Ttp.Meteor.TAppHeadStatus.ImagesPrintedA">
             <summary>Count of images which have completed printing on datapath A, if [System] EnableImageTracking = 1</summary>
         </member>
+        <member name="F:Ttp.Meteor.TAppHeadStatus.MiscData">
+            <summary>Some abstract data. Interpretation depends on the HDC type. See the TechincalNote.zip section on the specific head type for further information</summary>
+        </member>
         <member name="T:Ttp.Meteor.TCompactFlashStatus">
             <summary>
-            Compact flash write status and progress.  As well as the PCC8 Compact flash card, this now covers
-            several "image store" mechanisms, which can also include a "virtual" Compact flash using the PC's 
-            hard drive, the PCCE UHS SD card, and PCCE DDRM.
+            <para>Image store write status and progress.</para>
+            <para>The image store mechanism allows preloaded image data to persist between print jobs.</para>
+            <para>Where the image store is backed by non-volatile storage, image data persists over a hardware restart.</para>
+            <para>The image store options are:</para>
+            <para>--A UHS SD card fitted to each PCC.</para>
+            <para>--PCC RAM.</para>
+            <para>--A "virtual" Compact flash, which stores data on the PC's hard drive.</para>
+            <para>[The 'TCompactFlashStatus' terminology derives from the Compact Flash card on the now obsolete PCC8]</para>
             </summary>
         </member>
         <member name="F:Ttp.Meteor.TCompactFlashStatus.MaxPccNum">
@@ -3851,7 +3987,7 @@
             <summary>Always zero.  Previously this was the count of queued write commands sent via PCMD_CF_WRITEFILE, which is now obsolete.</summary>
         </member>
         <member name="F:Ttp.Meteor.TCompactFlashStatus.CfErrorReg">
-            <summary>Error register data value for each PCC</summary>
+            <summary>Obsolete: always zero (originally the CF card error register data value for each PCC).</summary>
         </member>
         <member name="F:Ttp.Meteor.TCompactFlashStatus.MinSizeBlocks">
             <summary>The minimum size in 512-byte blocks of all detected Compact Flash cards.  N.B. this can read zero while the cards are initialising.</summary>
@@ -3922,146 +4058,6 @@
         <member name="F:Ttp.Meteor.SerialNumberStatus.SerialNumber">
             <summary>
             HDC serial number
-            </summary>
-        </member>
-        <member name="T:Ttp.Meteor.TAppSG1024Eeprom">
-            <summary>
-            IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-            Structure records the raw EEPROM data from the SG1024 printhead
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppSG1024Eeprom.DataReady">
-            <summary>
-            Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-            still reading data from the head and the application should try again
-            later, provided ChecksumFail is not set.
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppSG1024Eeprom.ChecksumFail">
-            <summary>
-            Flag set if the Eeprom data read has completed but the data checksum 
-            has failed
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppSG1024Eeprom.PrintheadSerialNumber">
-            <summary>Printhead serial number string, NULL terminated</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppSG1024Eeprom.CalibrationVoltage">
-            <summary>
-            Calibration voltage (for the entire 1024-jet head)
-            </summary>
-        </member>
-        <member name="T:Ttp.Meteor.TAppRicohVpp">
-            <summary>
-            IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-            Ricoh Vpp Eeprom string
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRicohVpp.Vpp">
-            <summary>Vpp</summary>
-        </member>
-        <member name="T:Ttp.Meteor.TAppRG4Eeprom">
-            <summary>
-            IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-            Structure records the raw EEPROM data from the Ricoh Gen4 printhead.
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4Eeprom.PartNumber">
-            <summary>Part Number</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4Eeprom.SerialNumber">
-            <summary>Serial Number</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4Eeprom.VppOdd">
-            <summary>Vpp1 and Vpp2 odd</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4Eeprom.VppEven">
-            <summary>Vpp1 and Vpp2 even</summary>
-        </member>
-        <member name="T:Ttp.Meteor.TAppRG4HDCEeprom">
-            <summary>
-            IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-            Structure records the raw EEPROM data from 2 Gen4 heads connected the Ricoh HDC
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.StructVersion">
-            <summary>Structure Version</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.PccNumber">
-            <summary>Pcc number (1 - n) for this record</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.HeadNumber">
-            <summary>Head number (1 - n) for this record</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.DataValidHead1">
-            <summary>Is the Eeprom data valid for head 1</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.Head1Eeprom">
-            <summary>Data read from the head 1 Eeprom (valid if DataValidHead1 is non-zero)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.DataValidHead2">
-            <summary>Is the Eeprom data valid for head 2</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.Head2Eeprom">
-            <summary>Data read from the head 2 Eeprom (valid if DataValidHead2 is non-zero)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG4HDCEeprom.DataReady">
-            <summary>
-            Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-            still reading data from the head and the application should try again
-            later, provided ChecksumFail is not set.
-            </summary>
-        </member>
-        <member name="T:Ttp.Meteor.TAppRG5Eeprom">
-            <summary>
-            IMPORTANT!! This structure is being deprecated. Use PiGetEepromData() API instead
-            Structure records the raw EEPROM data from the Ricoh Gen5 printhead.
-            </summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.PartNumber">
-            <summary>Part Number</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.SerialNumber">
-            <summary>Serial Number</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.VppLineA">
-            <summary>LineA Vpp1 and Vpp2</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.VppLineB">
-            <summary>LineB Vpp1 and Vpp2</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.VppLineC">
-            <summary>LineC Vpp1 and Vpp2</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.VppLineD">
-            <summary>LineD Vpp1 and Vpp2</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.StartDate">
-            <summary>Day when the head was first used [1..31]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.StartMonth">
-            <summary>Month when the head was first used [1..12]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.StartYear">
-            <summary>Year when the head was first used [2000..2100]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.LastUpdateDate">
-            <summary>Day when the dropcounter was last updated [1..31]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.LastUpdateMonth">
-            <summary>Month when the dropcounter was last updated [1..12]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.LastUpdateYear">
-            <summary>Year when the dropcounter was last updated [2000..2100]</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.LastDropcounterVal">
-            <summary>Value of dropcounter, not CLS-compliant</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TAppRG5Eeprom.DataReady">
-            <summary>
-            Flag set if the Eeprom data is ready.  If FALSE the Meteor Print Engine is
-            still reading data from the head and the application should try again
-            later, provided ChecksumFail is not set.
             </summary>
         </member>
         <member name="T:Ttp.Meteor.TDropTunerStatus">
@@ -4228,34 +4224,6 @@
         </member>
         <member name="F:Ttp.Meteor.TDropTunerStatus.checkString">
             <summary>Marshaling check string should be "TTP"</summary>
-        </member>
-        <member name="T:Ttp.Meteor.TLexmarkStatus">
-            <summary>Lexmark print head status</summary>
-            <exclude />
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.InkType">
-            <summary>Ink type (0-63)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.InkLevel">
-            <summary>Ink fill level (0-100%)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.DropsPrinted">
-            <summary>Drops printed</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.Valid">
-            <summary>Non zero when cartridge is valid</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.SerialNumber">
-            <summary>Serial number (0-65535)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.FirstUsed">
-            <summary>First used time (32-bit POSIX time)</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.Eeprom">
-            <summary>Raw EEPROM data</summary>
-        </member>
-        <member name="F:Ttp.Meteor.TLexmarkStatus.PrintingEnabled">
-            <summary>Flag indicating when printing is enabled (EEPROM data read complete)</summary>
         </member>
         <member name="T:Ttp.Meteor.MeteorPlaneConfig">
             <summary>
@@ -4446,23 +4414,32 @@
         <member name="F:Ttp.Meteor.WatermarkDetails.JobSetId">
             <summary>[In] The Job Set ID to watermark</summary>
         </member>
+        <member name="F:Ttp.Meteor.WatermarkDetails.JobId">
+            <summary>[In] The Job ID to watermark. If larger than number of jobs, we'll use JobId % NumJobs</summary>
+        </member>
+        <member name="F:Ttp.Meteor.WatermarkDetails.PositionId">
+            <summary>[In] The Position Id to watermark. If final position, <see cref="F:Ttp.Meteor.eRET.RVAL_EOF"/> is returned by PiGenerateWatermark()</summary>
+        </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.FreeBuffers">
             <summary>[In] Set to true to free the watermark buffers for the given <see cref="F:Ttp.Meteor.WatermarkDetails.JobSetId"/></summary>
         </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.Content">
-            <summary>[In] The data in the watermark to uniquely identify it, always a string with 32 characters + '\0'</summary>
+            <summary>
+            [In/Out] The data in the watermark to uniquely identify it, always a string with 32 characters + '\0'.
+            If it is set to "" after returning then the next position requires a new content.
+            </summary>
         </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.ImageBufferIdsOut">
             <summary>[Out] Image buffer indexes that have been watermarked, per plane</summary>
         </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.XPosOut">
-            <summary>[Out] The x-position to print the watermark at</summary>
+            <summary>[Out] The x-position to print the watermark at, per plane</summary>
         </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.YPosOut">
-            <summary>[Out] The y-position to print the watermark at</summary>
+            <summary>[Out] The y-position to print the watermark at, per plane</summary>
         </member>
         <member name="F:Ttp.Meteor.WatermarkDetails.Width">
-            <summary>[Out] The width of the watermark</summary>
+            <summary>[Out] The width of the watermark, per plane</summary>
         </member>
         <member name="T:Ttp.Meteor.bmImageDetailsFlags">
             <summary>
@@ -4671,6 +4648,33 @@
             <summary>[In] A one bit-per-pixel RIP config can be used to generate a raster image for printing at two or four bits-per-pixel
             <para>        In this case, OneBppMapMode is the grey level used for all non-zero pixels</para></summary>
         </member>
+        <member name="F:Ttp.Meteor.RipDetails.UseLegacyMode">
+            <summary>[IN] N.B Allows the user to select to use the old version of the Inline RIP for compatibility.
+            Enable this option will disable the option of running with scalable RIP but for users that don't need it will improve backward compatibility </summary>
+        </member>
+        <member name="F:Ttp.Meteor.RipDetails.BufferCount">
+            <summary>[IN] The amount of channel buffers that will be created and filled before the RIP is stalled.
+            <para>        This value is multiplied by the amount of scalable threads that is used (if using scalable otherwise just uses the number)</para>
+            <para>        It is advised for smaller files to use more and larger files less. </para>
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.RipDetails.ScalableRip">
+            <summary>
+            [IN] N.B Enables scalable RIP mode allowing for multiple threads to be use to RIP the files.
+            Testing suggests that you need to keep the CPU usage below 100% otherwise this will not be a big performance increase
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.RipDetails.ScalableThreads">
+            <summary>
+            [IN] The number of threads used in scalable mode
+            </summary>
+        </member>
+        <member name="F:Ttp.Meteor.RipDetails.ScalableMemory">
+            <summary>
+            [IN] The amount of memory that the RIP can use while in scalable mode. This is in MB
+            This is divided evenly between the the RIPs eg. 4 RIPs with 16000 Memory will give 4000 to each
+            </summary>
+        </member>
         <member name="T:Ttp.Meteor.RipPreviewDetails">
             <summary>
             In/Out parameters for PiRipPreview
@@ -4804,7 +4808,9 @@
             <summary>Y resolution defined by the configuration file in Dots Per Inch.  Derived from the print head's native resolution and the configured Y interlace (if set); assumes sabre angles are not being used.</summary>
         </member>
         <member name="F:Ttp.Meteor.TCurrentCfgDesc.YSpanPixels">
-            <summary>The maximum Y span of an image; this is the minimum Y span over all configured planes.  Normally, all planes should have the same Y span.  More information can be found via <see cref="T:Ttp.Meteor.MeteorPlaneConfig"/></summary>
+            <summary><para>The maximum Y span of an image; this is the minimum Y span over all configured planes.  Normally, all planes should have the same Y span.</para>
+                     <para>More information can be found via <see cref="T:Ttp.Meteor.MeteorPlaneConfig"/></para>
+                     <para>Does not take into account planes with extended plane indexes greater than 32 (<see cref="F:Ttp.Meteor.MeteorConsts.MAX_PLANES"/>)</para></summary>
         </member>
         <member name="F:Ttp.Meteor.TCurrentCfgDesc.bSupports1BppPrintData">
             <summary>Does the current head type support one bit per pixel print data</summary>
@@ -4897,7 +4903,22 @@
             <summary>RGB TIFF file (i.e. a TIFF file which needs to be Ripped before it can be printed)</summary>
         </member>
         <member name="F:Ttp.Meteor.eImageFileType.eXML_LOC_FILE">
-            <summary>XML File that contains the location data for mixed mode</summary>
+            <summary>XML file that contains the location data for mixed mode</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eImageFileType.eXML_TEST_PATTERN_FILE">
+            <summary>XML file that contains information about how to generate a test pattern like one in the preview image</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eImageFileType.eBMP_FILE">
+            <summary>BMP file (.bmp is generally used for preview files but can sometimes contain raster print data)</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eImageFileType.ePNG_FILE">
+            <summary>PNG file</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eImageFileType.eJPG_FILE">
+            <summary>JPG file</summary>
+        </member>
+        <member name="F:Ttp.Meteor.eImageFileType.ePRINTABLE_BMP_FILE">
+            <summary>BMP file containing printable raster data</summary>
         </member>
         <member name="T:Ttp.Meteor.NozzleCompOverride">
             <summary>
@@ -5004,14 +5025,17 @@
         </member>
         <member name="T:Ttp.Meteor.TStatusReportParams">
             <summary>
-            Parameters for the CreateStatusReport API
+            Parameters for the PiCreateStatusReport API
             </summary>
         </member>
         <member name="F:Ttp.Meteor.TStatusReportParams.StructureSizeBytes">
             <summary>Size of this structure in bytes.  Must be filled in by the user.</summary>
         </member>
         <member name="F:Ttp.Meteor.TStatusReportParams.CtrlFlags">
-            <summary> Control bit flags.  set Bit0 to include *.sim files into the status report
+            <summary> 
+            Control bit flags.
+            <para>Set Bit0 to include *.sim files into the status report.</para>
+            <para>Set Bit1 to return as soon as the status report batch file is launched, default is to wait for it to complete.</para>
             </summary>
         </member>
         <member name="F:Ttp.Meteor.TStatusReportParams.UserMessage">
@@ -5042,20 +5066,20 @@
         <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_CONTINUOUS_PRINT">
             <summary> Request TContinuousPrintStatus  </summary>
         </member>
-        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_VISTA">
-            <summary> Request TVistaStatus    </summary>
+        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_RESERVED0">
+            <summary> Reserved/deprecated    </summary>
         </member>
-        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_LEXMARK">
-            <summary> Request LexmarkStatus   </summary>
+        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_RESERVED1">
+            <summary> Reserved/deprecated   </summary>
         </member>
         <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_SG1024_EEPROM">
-            <summary> Request TAppSG1024Eeprom    </summary>
+            <summary> Deprecated, use STATUS_EEPROM_DATA instead   </summary>
         </member>
-        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_RG4HDC_EEPROM">
-            <summary> Request TAppRG4HDCEeprom    </summary>
+        <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_RESERVED2">
+            <summary> Reserved/deprecated    </summary>
         </member>
         <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_RG5_EEPROM">
-            <summary> Request TAppRG5Eeprom   </summary>
+            <summary> Deprecated, use STATUS_EEPROM_DATA instead   </summary>
         </member>
         <member name="F:Ttp.Meteor.eSTATUSTYPE.STATUS_SWATHSEPARATOR">
             <summary> Request SwathSeparatorStatus (for ScanEngine SDK internal use only) </summary>

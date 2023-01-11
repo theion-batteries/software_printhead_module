@@ -1,0 +1,248 @@
+=================================================================================================
+    Some information on the waveform files for Konica Minolta KM1024A family head
+=================================================================================================
+
+   
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is usually [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+    There is one special case: a pulse can be made of one segment in case when segment start and end 
+    voltages are the same and slew rate is 0. This is for simpler generation of "flat" pulses, especially for COM1 type
+    waveforms.
+
+
+*   Max. total number of segments in a whole WF is 32; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+        .<------ Pulse0 ---->.
+        .                    .
+        .        .----.      .
+        .     . /     .\     .
+        .   __./      . \    .
+        .  /  .       .  \   .
+        . /   .       .   \  .
+        ./    .       .    \_.
+           S0     S1     S2
+
+
+
+
+* Waveform constraints:
+
+ - 1..8 pulses per Waveform, 1..8 segments per pulse, up to 32 segments in total.
+ - Whole WF should start and end at the same voltage.
+ - WF should start at low voltage: 0..1v
+ - No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ - No voltage discontinuity between segments within one pulse
+ - Hold time can't be < 50ns and > 65535*50ns = 3276750ns
+ - absolute Min & Max voltages are properties of the hardware and hardcoded [0..36000] mv
+ - hold time for the last segment in a pulse should be > 600ns  
+ - slew rate: segment raising or falling edge duration can't be < 50ns and > 65535*50ns
+ - Waveform min. voltage can't be less than 500mv   
+ - COM1 and COM2 waveforms constraints: <.. to be worked out ...>
+      
+
+=================================================================================================
+"Working" (COM2) and "Tickling" (COM1) waveforms
+=================================================================================================
+These type of head needs at least 2 different waveforms: 
+    - "COM2" or "Jetting"       in datasheet terminology
+    - "COM1" or "Non-jetting"   in datasheet terminology
+
+Thus, it is necessary to use 2 WF files that describe "COM1" and "COM2" waveforms.
+
+"COM2" or "Jetting" waveform file is referenced from Meteor *.cfg file in a standard way. 
+In its [generic] section it must contain line "WaveformType = COM2" and a file name for the "COM1" waveform file as
+"Com1Waveform" key value. This is the way "COM2" and "COM1" waveforms are linked together.
+
+In turn, "COM1" waveform file in its [generic] section must contain line "WaveformType = COM1" to identify its type.
+Several COM2 WF files can "include" the same COM1 file.
+
+The user is responsible for synchronising COM2 and COM1 waveforms by selecting proper segments, slew rates and hold times.
+
+
+=================================================================================================
+     Hardware configuration:
+=================================================================================================
+    
+    * HDC-KM1024A drives one head        
+
+    * KM1024A head has 4 nozzle rows. They are organised the following way: The head is divided into 
+    2 parts or halves: "Left" and "Right", each half has 2 nozzle rows: "A" and "B". So, in total we 
+    have 4 nozzle rows or "Jetting assemblies" or JAs. JA1 corresponds to LA, JA2->LB, JA3->RA, JA4->RB.
+
+    Despite that there are 4 JAs per head, it is not possible to assigh arbitrary waveforms to them individually.
+
+    * Each head half should have:
+        COM2 "jetting" waveform  ( waveforms for nozzle rows A&B must be identical within head half)
+        COM1 "non-jetting" waveform
+
+    * Head "halves" can have different COM1 and COM2 waveforms.
+    * it is possible to adjust waveforms slightly within a head "half", see "WF voltage scaling section".
+
+    * it is possible to specify an optional "tickling waveform" that applies to the head the same way
+      as normal working one, but only when there is no encoder pulses (head is idle). 
+      In order to achieve this a parameter "TickleWaveformFileIdx" can be specified. Its default value 
+      is 0, which means "tickling is disabled". It it has a value of a correct waveform file index, then 
+      corresponding waveform will be used as tickling one.
+
+
+
+    Configuration example:
+
+    [KM1024A] ;-- "head" section
+    Waveform1 = "Waveform\KonicaMinolta\KM1024A\KM1024A_TestWF_1BPP.txt"         ; Default COM2 waveform file for 1BPP
+    Waveform2 = "Waveform\KonicaMinolta\KM1024A\KM1024A_WorkWF_Sample_1BPP.txt"  
+    Waveform3 = "Waveform\KonicaMinolta\KM1024A\Tickling.txt"   ;-- tickling WF
+
+
+    [Controller1]             ;--- PCC level 
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveform:  "KM1024A_TestWF_1BPP.txt"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveform: "Tickling.txt"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1, 2,2 ;-- working  waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+    TickleWaveformFileIdx = 0,0, 3,3 ;-- tickling waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+                            ^^^^^^^^
+                               |
+    Please note that WF indices for [JA1,JA2] and [JA3,JA4] must be the same
+
+
+
+=================================================================================================
+"Jetting" (COM2) waveform specifics.
+=================================================================================================
+
+1.  Every pulse in COM2 waveform shoud have a bit of information telling if this pulse will be ejecting ink 
+    for a given grayscale value.
+    This information is provided as a set of OPRs (Output pattern registers). See head specs for mapping OPR 
+    contents to COM1 and COM2 waveform pulses.
+    
+    There are 8 OPR registers that need to be specified.
+    They are listed in [OPR] section of the config file. It must contain exactly 8 keys "OPR0"..."OPR7". Each key 
+    must have 8 bit value. 
+    Basically, OPR number [0..7] corresponds to the pixel data value [0..7] (3BPP max).
+
+        An example:
+        [OPR]
+        OPR0 = 0x00 ;- for pixel value = 0, should be 0 normally.
+        OPR1 = 0x02 ;- for pixel value = 1                       
+        OPR2 = 0x02 ;- for pixel value = 2                       
+        OPR3 = 0x02 ;- for pixel value = 3                       
+        OPR4 = 0x02 ;- for pixel value = 4                       
+        OPR5 = 0x02 ;- for pixel value = 5                       
+        OPR6 = 0x02 ;- for pixel value = 6                       
+        OPR7 = 0x02 ;- for pixel value = 7                       
+
+
+ 2. We use the same COM2 WF file for a head half (different halves can have different COM2 waveforms), so,
+    nozzle rows A&B ([JA1,JA2] and [JA3,JA4])  will have the same WF shape in terms of number of segments, number of pulses,
+    timings and grey level masks. On the other hand, it is possible to adjust WF voltages for every JA individually.
+    Pulse/segment/whole WF duration will stay the same, but WF amplitude can be tuned for every JA individually by multiplying
+    to some coefficient.
+
+    ==== Waveform voltages scaling 
+
+    WF voltage adjustment (scaling) has 2 modes: 
+        * keeping WF segments hold time (slew rate changes)
+        * keeping WF slew rate constant (segment hold time changes)
+
+    In both modes whole segment/pulse/WF duration stays the same.
+    Scaling applies to COM2 (working) waveforms only. COM1 waveforms are not affected. 
+
+
+    WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+    
+    "WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+    Note that it has quite narrow range.
+
+    "WF_VScale_Mode" Specifies mode of scaling: either keeping pulse width (and whole WF length) constant or 
+    keeping slew rate and pulse hold time constant. If scaling mode is  0 there will be no scaling at all.
+    Possible values are:  
+            0   :scaling disabled, 
+            1   :keep pulse width (default), 
+            2   :keep slew rate
+
+    Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+    If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+    Every of 4 head nozzle rows (JAs) can have its own scaling coefficient.
+    For example:
+
+        [HeadDriver1:1]    
+        WF_VScale_Mode  = 1 ;-- set PCC1:HDC1 WF scaling mode to "keep pulse width", it also enables WF scaling
+
+        [Head1:1] 
+        WF_VScale_Coeff = 0.98, 1.0, 1.05, 1.1 ;-- WF scaling coefficients for PCC1:HDC1:Head1, JA1..JA4 respectively
+
+
+=================================================================================================
+    Setting head temperature 
+=================================================================================================
+
+It is possible to specify paarmeter "HeadTargetTemperature" in a config file. This parameter
+sets the head target temperature (value in degrees C). 
+By default its velue is 0, meaning "don't use temperature control".
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of voltages/temperatures/other parameters are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multiplied by 10
+TAppHeadStatus::Temperature1    Head temperature 
+TAppHeadStatus::Temperature2    high16 bits:Amp2, low16 bits:Amp1 Temperature
+TAppHeadStatus::Temperature3    high16 bits:Amp4, low16 bits:Amp3 Temperature
+TAppHeadStatus::Temperature4    high16 bits:Amp6, low16 bits:Amp5 Temperature
+
+
+-- Head voltages, multiplied by 10. 
+TAppHeadStatus::HeadVoltage     VH voltage
+TAppHeadStatus::Voltages[0]     VHeater
+TAppHeadStatus::Voltages[1]     VDDA
+                                
+
+
+-- HDC current
+TAppHeadStatus::AbsHeadVoltage  HDC consumption current, mA
+
+--
+TAppHeadStatus::HeaterPwm       Heater PWM, [0..100%]
+
+
+

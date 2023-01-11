@@ -1,0 +1,188 @@
+=================================================================================================
+    
+Some information on the waveform files for Konica Minolta KM1280i head
+
+=================================================================================================
+
+General information about WF file format.
+According to the heads specs, waveforms should look as follows:
+
+
+
+  <-T2->                           <-T2->
+  +----+                           +----+
+  |    |                           |    |
+  |    |                           |    |
+  |    |                           |    |
+ -+    +---------------------------+    +---
+  .  -->Td<--                      .
+  .       +----------+             .    +----
+  .       |<-- T1 -->|<-- THold -->.    |
+  .       |          |             .    |
+ ---------+          +------------------+
+  .                                .
+  .<---     waveform pulse     --->.
+
+
+Where:
+    T2 is VH2 pulse length (us), 
+    T1 is VH1A, VH1B pulse length (us), 
+    THold is time from T1 falling edge to the next drop period begin (T2 raising edge).
+
+    Td (TDelay) is optional; default is the minimum possible delay of 200ns between the T2 falling edge and the T1 rising edge.
+
+T2+T1+THold make a "waveform pulse" that actually ejects a drop of ink.
+It is possible to define from 1 to 7 such pulses in the waveform file. Each pulse can have individual T1, T2 and THold times. 
+
+Waveform file contains information about pulse timings only. Voltages VH2, VH1A, VH1B are specified in Meteor
+configuration file. It can be done on PCC, HDC, head or even head-side basis. I.e. every individual head side can have
+its own waveform file + all the voltages and voltage adjustment coefficients.
+
+
+=================================================================================================
+Waveform file format
+=================================================================================================
+
+Section "generic" should contain head type (either KM1800I or KM1024I) and WF file version (only v1 currently supported)
+e.g:
+
+[generic]
+HeadType= KM1280I ; head type
+Version = 1
+
+It might be a "Bpp" key in this section as well, it is used by waveform editor and doesn't affect
+anything.
+
+Then there should be 1 to 16 sections that describe WF pulses: [Pulse0]...[Pulse14]. Pulse numbers 0..15 should be 
+sequential. I.e. the sequence [Pulse0] [Pulse1] [Pulse3] is not allowed.
+Each Pulse section describes one WF pulse in therms of T1, T2 and THold.
+E.g:
+[Pulse0]
+T2 = 2.3        ;-- VH2 pulse length, us
+T1 = 4.7        ;-- VH1 pulse length, us. if not specified, T1 assumed 2*T2
+THold = 1.1     ;-- hold time after T2 and T2, us
+TDelay = 0.5    ;-- delay between VH2 falling edge and VH1 rising edge, us
+
+The T2 and THold values are compulsory and must be specified.
+If the T1 value isn't specified, then it is assumed that T1=2*T2 (as head specs suggest)
+If the TDelay value isn't specified, then a delay of 200ns is used
+
+--- OPR (output pattern registers), see MK head documentation
+
+Optional section [Misc] can contain OPR0..OPR16 registers values if they need to be set something different
+from the default values that print head puts there on powering up. 
+If none of the OPR0..OPR16 keys are specified, then their head-default values will be used.
+To override OPR contents the user should specify _ALL_ OPR0..OPR16 values. The values are 32-bit wide. 
+
+In order to use OPR registers sensibly, HDC should be provided some information.
+To do this Meteor config file should have 'OPR_Mode' parameter that controls OPR registers mode.
+Bit0 of this parameter enables loading OPRs from the waveform file to HDC, and Bit1 enables 'binary data packing' mode,
+described in head's documentation. This 'binary data packing' mode may only be used for 1BPP printing.
+'OPR_Mode' can be set at least on HDC level, i.e. for all heads on a given HDC.
+So that 'OPR_Mode' parameter can be used in [DefaultParameterValues] section (applies for all PCCs and HDCs) or in 
+[ControllerX] section (applies to every HDC on a given PCC)
+
+For example,
+[Controller1]
+OPR_Mode = 3,0,0,0,0,0,0,0
+
+means PCC1:HDC1 will have OPR loading enabled + 'binary data packing' mode, and all other HDCs on PCC1 will have
+OPR control registers set to default (not loaded from WF file) and no binary data packing.
+
+If "OPR_Mode" value isn't set in the Meteor config file, it will get default value0.
+If "OPR_Mode" value for some HDC is 0, then OPR registers values OPR0..OPR8 from the waveform file are ignored and
+the head uses the buil-in OPR table (see head specs).
+So, if you want to use your own OPR values from WF file, then set "OPR_Mode" to 1.
+
+Setting "OPR_Mode" to 2 or 3 enables "binary data packing" mode, which is a separate topic.
+
+
+
+
+* Waveform constraints:
+
+- Waveform time unit is 25ns, so, any of the T2, T1, THold can't be less than 0.025us
+- Max. Value for these times currently is 65536*25ns = 1638us
+- VH1 must be in range [5.0, 18.0] volts
+- VH2 must be in range [5.0, 22.0] volts
+- VH1 must be less than VH2
+
+
+=================================================================================================
+--- Setting Waveform voltages
+=================================================================================================
+
+As mentioned above, waveform file specifies timing information only.
+Print head voltages (VH2, VH1A, VH1B) and some adjustments need to be set in Meteor configuration file. 
+
+Keys related to the head voltages:
+
+WF_VH2          VH2 voltage, volts
+WF_VH1_A        VH1 voltage for row A, volts 
+WF_VH1_B        VH1 voltage for row B, volts 
+
+WF_VScale_Coeff if value specified [0.5, 1.5], then VH2 will be multiplied by it.
+
+KM1280I head is considered as having 2 JAs: JA0 and JA1 (left and right sides in heads data sheet terminology)
+So, all mentioned above voltage parameters can be applied separately for "left" and "right" sides of the head.
+See "DefaultKM1280I_PccE.cfg" config file for example.
+
+
+=================================================================================================
+--- Specifying Spit and Tickle grey level values
+=================================================================================================
+It is possible set up custom grey level values for spitting and ticklig with the help of following parameters:
+
+name:SpitGreyLevel,   id:KPEX_SpitGreyLevel,   valid range:[0..0xF],  def:0x0F, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+name:TickleGreyLevel, id:KPEX_TickleGreyLevel, valid range:[0..0xF],  def:0x00, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+These parameters are applied to the whole HDC, i.e. to all heads on specified HDC.
+
+If these parameters are not specified, the system uses Spit grey level 0x0F and Tickle grey level 0x00 by default
+Config file example:
+    
+    [DefaultParameterValues] ; system global defaults
+    ;SpitGreyLevel   = 0x0F  ; global default value
+    ;TickleGreyLevel = 0x00  ; global default value
+
+
+    [HeadDriver1:1]        ; settings specific to all heads on PCC:1, HDC:1 
+    SpitGreyLevel   = 0x0A 
+    TickleGreyLevel = 0x0B 
+    
+It is possible to check the concrete values in PrintEngine log, it should contain line like as follows:
+    
+    10:31:23.762 [PCC:1,HDC:4]  SpitGL:0xa, TickleGL:0xb
+
+
+=================================================================================================
+--- Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages and temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multiplied by 10
+TAppHeadStatus::Temperature1    Head1 temperature 
+TAppHeadStatus::Temperature2    Head2 temperature
+
+--- Head voltages are in volts multipiled by 10
+TAppHeadStatus::Voltages[0]     Head1 VH1_LA    
+TAppHeadStatus::Voltages[1]     Head1 VH1_LB
+TAppHeadStatus::Voltages[2]     0
+TAppHeadStatus::Voltages[3]     Head1 VH2_L  
+TAppHeadStatus::Voltages[4]     Head1 VH1_RA
+TAppHeadStatus::Voltages[5]     Head1 VH1_RB
+TAppHeadStatus::Voltages[6]     0
+TAppHeadStatus::Voltages[7]     Head1 VH2_R
+
+TAppHeadStatus::Voltages[8]     Head2 VH1_LA
+TAppHeadStatus::Voltages[9]     Head2 VH1_LB
+TAppHeadStatus::Voltages[10]    0
+TAppHeadStatus::Voltages[11]    Head2 VH2_L 
+TAppHeadStatus::Voltages[12]    Head1 VH1_RA
+TAppHeadStatus::Voltages[13]    Head2 VH1_RB
+TAppHeadStatus::Voltages[14]    0
+TAppHeadStatus::Voltages[15]    Head2 VH2_R 

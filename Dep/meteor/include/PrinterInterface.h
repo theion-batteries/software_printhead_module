@@ -104,12 +104,15 @@ typedef bool (CALLCONV fnPiIsCommandQueueEmpty)(uint32 lane);
 // .............................................................................
 // Sets the state of a defined signal (I/O, PSUs etc). The signal ID parameter
 // format is as follows:
+// Byte 3 - XAddr (extended address, used for some signal types)
 // Byte 2 - Pcc Number (1 - n)
 // Byte 1 - Head Number (1 - n, or 0 for the PCC I/O signals)
 // Byte 0 - one of SIG_xxx defined in Meteor.h
-// The HDC I/O signals are bidirectional and default to inputs. To enable a
-// signal as an output the corresponding SIG_OENx signals must be set to 1.
-// The PCC I/O signals are dedicated inputs and outputs, so this doesn't apply.
+// See SigTypes documentation for details on the individual signals
+//
+// Note that this function returns as soon as the signal has been sent to the
+// PrintEngine.  For synchronous operation, use PiSetAndValidateSignal.
+//
 
 IFTYPE eRET CALLCONV PiSetSignal(uint32 SignalId, uint32 State);
 typedef eRET (CALLCONV fnPiSetSignal)(uint32 SignalId, uint32 State);
@@ -530,6 +533,7 @@ IFTYPE eRET CCALL PiGenerateWatermark(WatermarkDetails* pDetails);
 // type which is recognised by the PrintEngine.
 // Should be used only when the calling application is also hosting the PrintEngine;
 // it is valid to call PiGetImageFileDetails before the call to PiStartPrintEngine
+// Returns RVAL_OK on success, RVAL_NOFILE if the file can't be found or accessed, RVAL_BAD_TYPE if the file is invalid
 #ifdef _WIN32
 IFTYPE eRET CCALL PiGetImageFileDetails(const wchar_t* filePath, GenericImageFileDetails* pDetails);
 typedef eRET (CCALL fnPiGetImageFileDetails)(const wchar_t* filePath, GenericImageFileDetails* pDetails);
@@ -719,40 +723,16 @@ typedef TCompactFlashStatus* (CALLCONV fnPiGetCompactFlashStatus)(void);
 IFTYPE eRET CALLCONV PiGetLastStatusError(void);
 typedef eRET (CALLCONV fnPiGetLastStatusError)(void);
 
-// .............................................................................
-// Deprecated. Returns nullptr
-IFTYPE void* CALLCONV PiGetLexmarkStatus(uint32 pccnum, uint32 hnum);
-typedef void* (CALLCONV fnPiGetLexmarkStatus)(uint32 pccnum, uint32 hnum);
 
 // .............................................................................
-// Requests the Eeprom data retrieved from the SG1024 head.  Returns a pointer to 
-// that structure or NULL if the print engine does not respond to the request. 
-// pccnum and hnum are 1 to n.  If TAppSG1024Eeprom.DataReady is not set the
-// print engine is still retrieving the Eeprom information and the application
-// should try again later.
 // This function is deprecated.use PiGetEepromData() instead.
-IFTYPE TAppSG1024Eeprom* CALLCONV PiGetSG1024Eeprom(uint32 pccnum, uint32 hnum);
-typedef TAppSG1024Eeprom* (CALLCONV fnPiGetSG1024Eeprom)(uint32 pccnum, uint32 hnum);
+IFTYPE void* CALLCONV PiGetSG1024Eeprom(uint32 pccnum, uint32 hnum);
+typedef void* (CALLCONV fnPiGetSG1024Eeprom)(uint32 pccnum, uint32 hnum);
 
 // .............................................................................
-// Requests the Eeprom data retrieved from the RG4 head.  Returns a pointer to 
-// that structure or NULL if the print engine does not respond to the request. 
-// pccnum and hnum are 1 to n. If TAppRG4HDCEeprom.DataReady is not set the
-// print engine is still retrieving the Eeprom information and the application
-// should try again later.
 // This function is deprecated.use PiGetEepromData() instead.
-IFTYPE TAppRG4HDCEeprom* CALLCONV PiGetRG4HDCEeprom(uint32 pccnum, uint32 hnum);
-typedef TAppRG4HDCEeprom* (CALLCONV fnPiGetRG4HDCEeprom)(uint32 pccnum, uint32 hnum);
-
-// .............................................................................
-// Requests the Eeprom data retrieved from the RG4 head.  Returns a pointer to 
-// that structure or NULL if the print engine does not respond to the request. 
-// pccnum and hnum are 1 to n. If TAppRG5Eeprom.DataReady is not set the
-// print engine is still retrieving the Eeprom information and the application
-// should try again later.
-// This function is deprecated.use PiGetEepromData() instead.
-IFTYPE TAppRG5Eeprom* CALLCONV PiGetRG5Eeprom(uint32 pccnum, uint32 hnum);
-typedef TAppRG5Eeprom* (CALLCONV fnPiGetRG5Eeprom)(uint32 pccnum, uint32 hnum);
+IFTYPE void* CALLCONV PiGetRG5Eeprom(uint32 pccnum, uint32 hnum);
+typedef void* (CALLCONV fnPiGetRG5Eeprom)(uint32 pccnum, uint32 hnum);
 
 // .............................................................................
 // Requests the Eeprom data from the head attached to the given PCC and HDC.

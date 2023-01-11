@@ -1,0 +1,84 @@
+=================================================================================================
+Some information regarding temperature control for Dimatix Spectra head
+=================================================================================================
+
+HDC-S has 2 connectors for external thermistors and can control two outputs on GPIO connector.
+Default thermistors value is supposed to be 100K at 25C and B-const:3380.
+It provides the simplest relay (on/off) control: when the measured tempearture is less than the target, 
+the corresponding GPIO pin is set high, otherwise it is in a low state.
+
+HDC-S has 4 GPIO pins that can be used to control heater(s). They are IO1..I04 on the HDC connector.
+
+    
+--- setting up temperature control
+
+There are following config file parameters that can be used to set up temperature control:
+    
+    [Spectra]
+    HeadTemperature = 45.0   ; target head temperature (C) !! This is a legacy parameter, see below.
+    Heater1         = 0      ; Heater1 Output pin (0 for no temp control)
+    Heater2         = 0      ; Heater2 Output pin (0 for no temp control)
+
+
+    "HeadTemperature" parameter specifies head target temperature (40C is the default value).
+                      Unfortunately, this parameter in [Spectra] section allows specifying only 
+                      "Head" target temperature (Channel1) for the WHOLE system. 
+                      Using this parameter is not recommended for future. See below.  
+
+
+    "Heater1" specifies IO pin [1..4] to control heater on the channel1 (thermistor connected to TH1),
+              or 0 to disable channel1 temperature control.               
+
+    "Heater2" specifies IO pin [1..4] to control heater on the channel2 (thermistor connected to TH2),
+              or 0 to disable channel2 temperature control.               
+
+
+"Heater1" and "Heater2"  IO pin numbers  can't be the same, as it is a GPIO conflict. It such a case error
+message will be logged and temperature control disabled.
+
+
+--- Legacy (not recommended any longer) way of setting head / aux target temperatures.
+As mentioned above, the only setting was "HeadTemperature" in [Spectra] section. It was applied to the WHOLE system, 
+addressing all PCCs/HDCs. To set head target temperature on HDC basis, it was required to use PiSetParam() API and
+CCP_HEAD_TEMP parameter. Moreover, it was impossible to set "Aux" (channel2) target temperature from the config file, 
+for this CCP_AUX_TEMP needed to be used.
+Using this parameters is not recommended, because there is a better way to achieve this:
+
+--- Modern way of setting Head/Aux target temperatures.
+
+There are now two ConfigEngine parameters that allow specifying Head(channel1) and Aux(channel2) target temperatures:
+
+KPEX_TargetTemp, id:CPEX_TargetTemp, valid range:[0.0..90.0], def:40.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+KPEX_AuxTargetTemp, id:CPEX_AuxTargetTemp, valid range:[0.0..90.0], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+
+They can be used down to HDC level, allowing setting target temperatures for individual HDCs/Heads. For example:
+
+    [DefaultParameterValues]      ;-- global default values for the WHOLE system
+    HeadTargetTemperature = 22.3  ;-- target head temperature for ALL heads in the system
+    AuxTargetTemperature = 0;     ;-- 0 means "temperature control is disabled"
+
+    [HeadDriver1:4] ;-- settings specific to the head on  PCC:1, HDC:4
+    HeadTargetTemperature = 52.7  ;-- target head temperature for the head on PCC:1, HDC:4
+    AuxTargetTemperature = 40.0;  ;-- target "Aux" temperature for the PCC:1, HDC:4
+
+
+
+Using old "HeadTemperature" and new parameters in the config file is not recommended, this may lead to confusion.
+
+
+------------------ Getting real heater temperatures
+
+The real (measured) values of heater temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    temperature channel 1 ("Head")
+TAppHeadStatus::Temperature2    temperature channel 2 ("Aux")
+
+
+
+

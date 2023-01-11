@@ -1,0 +1,63 @@
+=================================================================================================
+    Getting SG600 head EEPROM information
+=================================================================================================
+
+Some useful information, like head serial number etc. is written in head EEPROM and can be obtained in a form of 
+JSON file via PiGetEepromData() API.
+
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+Dimatix SG600 head has 6 "print modules" or Jetting Assemblies (JAs) in Meteor terminology, and 
+every JA has its own EEPROM. Therefore there will be 6 portions of EEPROM information.
+
+For example, the PiGetEepromData() output may look like:
+
+{
+  "#DataValid" : true,
+  "#HeadType" : "HT_SG600",
+  "#InfoType" : "Head EEPROM Data",
+  "01-04-01-01" : 
+  {
+      "#DataValid" : true,
+      "Cal_Voltage" : "100",
+      "Date" : "032119",
+      "DropMassOffset" : "-0.42",
+      "EdgeToJet1_Dist" : "25.510",
+      "FileFormat" : "04",
+      "HeadPartNumber" : "2100309652",
+      "NozzlePitch" : "64.979",
+      "SerialNumber" : "16-00006608"
+  },
+
+   <... skipped ...>
+    
+  "01-04-01-06" : 
+  {
+    "#DataValid" : false
+  }
+}
+
+
+Notes:
+    - root key '"#DataValid" : true' means that whole head + HDC EEPROM has been read successfully.
+    - root contains an array of structures with names like "01-04-01-01". The name specifies 
+        PCC-HDC-Head-JA number and the structure itself contains decoded EEPROM data for the 
+        given JA. There should be 6 such structures.
+
+    - every JA structure in turn has its own "#DataValid" key that shows if JA EEPROM data is decoded successfully.
+    - for fields meaning/format please refer head specs.
+
+
+---
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt
+
+
+
+
+
+
+
+

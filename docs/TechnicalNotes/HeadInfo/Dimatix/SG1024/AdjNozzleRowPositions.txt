@@ -1,0 +1,65 @@
+=================================================================================================
+Some information regarding adjusting nozzle rows positions for Dimatic SG1024 ("Starfire") head
+=================================================================================================
+
+SG1024 (Starfire) head physical configuration:
+
+    * HDC drives 1 head
+    * each head has 8 nozzle rows: Row[1,2], Row[3,4], Row[5,6], Row[7,8]. 
+        Rows[1,2, 3,4] are grouped to make one head "half" and Rows[5,6, 7,8] make another head "half"
+        So, each half of the head can be used to print individual colour.
+        
+=================================================================================================
+
+It is possible to adjust print position (basically, fire-pulse timing) of individual head "half" or "colour" only.
+To achieve this  CCP_NOZZLE_ROW_X_ADJUST parameter can be used.
+
+
+CCP_NOZZLE_ROW_X_ADJUST command addressing: It accepts following arguments to select PCC/HDC/Head_half:
+
+     * PccNum - PCC Number  [1..254]  
+     * HdcNum - HDC Number  [1..8]
+     * "aNum" - [0..3] specifies head "half" and "forward/reverse" scan direction adjustment, see below
+    
+    There are special values for these parameters. 
+        - If both PccNum, HdcNum and "aNum" are 0, then ALL heads in the system will be addressed.
+
+This command "value" parameter is X-adjustment in microns, it can be positive or negative.
+
+
+"aNum" parameter's  bit0 should be 0 for "colour1" adjustment and 1 for "colour2" adjustment
+                    bit1 should be 0 for "forward scan" or '1' for "reverse scan" adjustment.
+
+
+So,  "aNum" value 0 specifies adjustment for "colour1", "forward scan"
+                  1 specifies adjustment for "colour2", "forward scan"
+                  2 specifies adjustment for "colour1", "reverse scan"
+                  3 specifies adjustment for "colour2", "reverse scan" 
+
+
+=================================================================================================
+
+There are two variants of dual colour starfire heads; inline and interlaced.
+
+The inline version has the two colours printing in the same Y positions; the interlaced version has
+the two colours interleaved in Y.
+
+The 'HeadSubType' parameter selects which version of head is being used:
+
+[DefaultParameterValues]
+HeadSubType = 0               ; 0 for single colour head; 1 for dual colour inline head; 2 for dual colour interlaced head
+
+The two types of dual colour head can be mixed in the same system by setting the type of head
+driven by HDCs #1-8 in the [ControllerN] section of the configuration file, for example:
+
+[Controller1]
+HeadSubType              = 2, 2, 1, 1, 2, 2, 1, 1  ; Heads 1,2,5,6 are 2-colour interlaced heads 3,4,7,8 are 2-colour inline
+
+The older parameter (below) for selecting the (non-interleaved) dual colour Starfire head variant 
+can still be used, but should not be used alongside the 'HeadSubType' parameter
+
+[Starfire]
+TwoInkHead = 1
+
+=================================================================================================
+

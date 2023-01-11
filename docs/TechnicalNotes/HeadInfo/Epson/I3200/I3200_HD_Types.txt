@@ -1,0 +1,48 @@
+=================================================================================================
+    Some information on Epson I3200 head family types / sub-types
+=================================================================================================
+
+
+--- standard I3200_A1 variant
+
+It is 600 DPI 4 colour variant. In Meteor terms it is referred as "EPSON_I3200" in a config file, which 
+corresponds to HT_EPSON_I3200. config file: "DefaultEpsonI3200_PccZ.cfg"
+It has 3200 nozzles in total, 4 colour planes 800 nozzles each, whole swath is 800 pixels.
+Pixels in all 4 colour planes print precisely on top of each other.
+
+
+--- I3200_A1HD  2 colour head
+It has 1200 DPI and the whole head swath is 1600 nozzles.
+This head has 2 sub-types depending on how the ink supply is connected to the nozzle rows.
+
+Because of the different DPI, we had to introduce a different head type for it.
+In Meteor terms it is referred as "EPSON_I3200_HD" in a config file, which 
+corresponds to HT_EPSON_I3200_HD. config file: "DefaultEpsonI3200_HD_PccZ.cfg"
+
+The colour planes configuration in the Meteor config file should be set to 2 planes, e.g:
+
+    [Planes]
+    PlanesPerHdc = 2
+    Plane1              = 1:1:1 ; Head mapped to plane 1 (PccNum:HdcNum:ClrNum)
+    Plane2              = 1:1:2 ; Head mapped to plane 2 (PccNum:HdcNum:ClrNum)
+
+See also default config file for more details.
+These head type has the same general structure as HT_EPSON_I3200 (4 ASICs, 2 nozzle rows per ASIC), but 
+ASIC[0,1] and ASIC[2,3] interlace in Y-direction, giving 1200 DPI total resolution.
+Interlacing ASICs/nozzle rows now result in fact that some pixels from different colour planes now can't print
+on top of each other. It can be easily seen in head nozzles layout from the specs.
+
+-- 8 colour variant:
+    It's possible to split the head into 8 nozzle rows by using PlanesPerHdc = 8
+    Individual nozzle rows have 300 DPI and 400 nozzles.
+    The rows can then be interlaced into a 2 colour head using Yinterlace = 4. Which rows interlace with which is then user defined,
+    based on which plane the rows are placed in.
+    For example:
+    Plane1 = 1:1:1,1:1:2,1:1:3,1:1:4
+    Plane2 = 1:1:5,1:1:6,1:1:7,1:1:8
+    will combine ASIC0 and ASIC1 into a 4 row head for plane 1, and combine ASIC2 and ASIC3 into a 4 row head for plane 2.
+
+    Rows have to be combined according to their physical offsets in the head, which are rows [1,2,3,4,5,6,7,8] = offsets [0,2,1,3,0,2,1,3].
+    You need to end up with each head having 1 row each at 0,1,2,3.
+
+    Yinterlace = 2 can be used to create a 4 colour head in a similar fashion, though the head being used will be limited by the physical offsets in the nozzle rows.

@@ -1,0 +1,145 @@
+=================================================================================================
+    
+Some information on voltages/temperatures control for Seiko 1024GS/RC1536 heads.
+
+=================================================================================================
+
+
+----- head voltages control
+
+Both these heads have 4 voltages: VRA, VRB, VRC, VRD. These correspond to head's "Jetting assemblies" JA0..JA3
+These voltages are defined by CPEX_HeadVoltage parameter. It can be placed in any of 
+[DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y:Z] sections of the Meteor config file.
+This allows specifying voltages down to the individual JA
+The default value is 29.0V.
+
+Config. file example:
+
+    [DefaultParameterValues]
+    HeadVoltage = 29.3 ;-- 29.3V for all heads in the system
+    
+    ;-- settings specific to individual heads on PCC1:HDC1
+    [HeadDriver1:1]
+    HeadVoltage = 28, 20 ;-- voltages for whole PCC1:HDC1:head1 and PCC1:HDC1:head2 respectively
+
+
+    ;--- settings specific to individual nozzle rows on PCC1:HDC1:Head1
+    [Head1:1:1]
+    HeadVoltage = 25.1, 25.2, 25.3, 25.4 ;-- VRA, VRB, VRC, VRD for the head1 on PCC:1.HDC:1
+
+
+
+
+
+-------------------------------------------------------------------------------------------------
+-----  temperature control
+-------------------------------------------------------------------------------------------------
+
+Seiko RC1536 head has one thermistor and no built-in heater. Instead, external heater control can be used.
+This external heater can be driven by 2 PWM signals on "heater" connector on HDC-2SII1536.
+For this head heater control uses a single temperature from head thermistor and produces 2 identical PWM 
+signals on a "heater" connector.
+
+Seiko SG1024GS head has 2 thermistors (one per each head module or "half"). Our version of specs says that 
+there are 2 built-in heaters, but the head we have doesn't seem to have it - it measureas as an open cicuit.
+So, using external heater (similar "heater" connector on HDC-2SII1024) is an option.
+For this head heater control uses individual signals from 2 head thermistors and produces 2 corresponding PWM 
+signals for heaters.
+
+For both heads the target head temperature is specified by CPEX_TargetTemp parameter that can be sev in the config file
+or via SetParamEx() API.
+
+This parametrs default value is 0, which means "no temperature control".
+Max. target temperature is 50C for RC1536 and 55C for 1024GS.
+
+This parameter along with other temperature-related ones  can be specified in following sections:
+[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]. This means that it is possible to specify temperature-related 
+parameters down to individual heads only.
+
+---
+
+!! Important note: On the latest versions of HDC-2Sii1536 the connector and external heater control MOSFETs 
+are not fitted, because no one seems to need them and the heads don't seem to have biult-in heaters.
+
+
+-------------------------------------------------------------------------------------------------
+    Getting real head temperatures/voltages
+-------------------------------------------------------------------------------------------------
+
+The real (measured) values of temperatures and some other parameters are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- temperature is in degrees C multiplied by 10
+TAppHeadStatus::Temperature1  - "HD1 Temp AB" (Head1, Module1)
+TAppHeadStatus::Temperature2  - "HD1 Temp CD" (Head1, Module2)
+TAppHeadStatus::Temperature3  - "HD2 Temp AB" (Head2, Module1)
+TAppHeadStatus::Temperature4  - "HD2 Temp CD" (Head2, Module2)
+
+
+--- voltages are scaled 10x times
+TAppHeadStatus::Voltages[0] - "HD1 Drv Volts A"
+TAppHeadStatus::Voltages[1] - "HD1 Drv Volts B"
+TAppHeadStatus::Voltages[2] - "HD1 Drv Volts C"
+TAppHeadStatus::Voltages[3] - "HD1 Drv Volts D"
+                                             
+                                             
+TAppHeadStatus::Voltages[4] - "HD2 Drv Volts A"
+TAppHeadStatus::Voltages[5] - "HD2 Drv Volts B"
+TAppHeadStatus::Voltages[6] - "HD2 Drv Volts C"
+TAppHeadStatus::Voltages[7] - "HD2 Drv Volts D"
+
+
+-------------------------------------------------------------------------------------------------
+----- temperature/voltage compensation
+-------------------------------------------------------------------------------------------------
+
+This feature can be used to automatically adjust head voltages depending on the ink temperature. 
+These heads have 4 voltages: VRA, VRB, VRC, VRD and they can be automaticaly adjusted as follows:
+
+    VRes = VSet + (THeadC - TRefC)*TGragient 
+
+
+    where
+    
+    VSet:       set voltages for VRA, VRB, VRC, VRD
+    THeadC:     Head temperature in degrees C 
+    TRefC:      head reference temperature, degrees C (25C by default)   
+    TGragient:  A coefficient that defines temperature->voltage dependency. 
+                Its value depends on ink type, but it seems that -0.134 V/DegC can be used as a reference value.
+
+    VRes:  Adjusted head voltages
+
+This mode is controlled by following parameters:
+
+CPEX_RefTemp  - specifies TRefC, default value 25.0C
+CPEX_Gradient - scpecifies TGragient, default value is 0 (no temperature compensation), should be in range [-1..1]
+
+These parameters can be specified in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y]. 
+
+For example:
+
+        [DefaultParameterValues]
+        Gradients = -0.134        ; Head temperature/voltage compensation coefficient, V/DegC 
+        HeadRefTemperature = 25.0 ; Reference temperature for temperature/voltage compensation
+
+    Head voltages are set to 29.0V, 
+    at 25C these voltages will be 29.0V, at 35C they will be 27.66V, at 22.7C they will be 29.3V
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,70 @@
+=================================================================================================
+    Some information regarding configuring PCC-E (PCC_FPGA_V2) and PCC2-E (PCC_FPGA_V3) systems
+=================================================================================================
+
+Meteor can support following configurations (from physical connetion and config file point of vews):
+
+    * Legacy: All PCCs are PCC-E type (PccFpga Version2)
+    * All PCCs are PCC2-E type (PccFpga Version3)
+    * a mixture of PCC-E + PCC2-E boards (PccFpga Version2 and Version3)
+
+The vast majority of settings in the config file are PCC - type independand, but in some cases the user will have 
+to specify in the config file which PCC board in the system is PCC-E and which is PCC2-E.
+It is not possible to plug-and-play and autodetect PCC types automatically.
+
+Scenarios:
+
+---- Legacy: All PCCs are PCC-E type (PccFpga Version2)
+Standard way, the settins in Meteor config files are:
+
+    [System]
+    PccType = "PCCE" ;-- it specifies that ALL PCCs are PCC-E
+
+
+---- All PCCs are PCC2-E type (PccFpga Version3)
+
+    1. The simplest way is to use following settings:    
+
+    [System]
+    PccType = "PCC2E";-- it specifies that ALL  PCCs are PCC2-E
+
+
+    2. More complicated way (see notes below about mixing PCC types)
+
+    [System]
+    PccType = "PCCE" ;-- it specifies that ALL PCCs are PCC-E
+
+    [DefaultParameterValues]
+    PccFpgaVer = 3   ;-- this key overrides PCC FPGA vesion GLOBALLY, so, ALL PCCs are now considered PCC2-E
+
+
+---- a mixture of PCC-E + PCC2-E boards (PccFpga Version2 and Version3)
+
+    In this case the user will have to explicitly specify which PCC type is which. For this it is 
+    necessary to use a parameter: "PccFpgaVer" its value is:
+    
+        2 - PCC-E type (PccFpga Version2)
+        3 - PCC2-E type (PccFpga Version3)                                                           
+    
+
+    The following example shows how to set PCC:1 as PCC-E and PCC:2 as PCC2-E
+    --------------------------------------
+
+    [System]
+    PccType = "PCCE" ;-- it specifies that ALL PCCs are PCC-E
+
+
+    [Planes]
+    Plane1 = 1:1   ; Configure in PCC:1
+    Plane2 = 2:1   ; Configure in PCC:2
+
+    [Controller1]
+    PccFpgaVer = 2 ; PCC:1 is explicitly PCC-E (though this line is redundant because of setting in [System])
+
+    [Controller2]
+    PccFpgaVer = 3 ; PCC:2 is explicitly PCC2-E (overrides setting in [System] and [DefaultParameterValues]) 
+
+
+
+
+

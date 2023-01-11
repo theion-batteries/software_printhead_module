@@ -95,13 +95,12 @@
             <br/>
             Byte 0 - one of <c><see cref="T:Ttp.Meteor.SigTypes">SigTypes</see></c>
             <br/>
-            The HDC I/O signals are bidirectional and default to inputs. To enable a
-            signal as an output the corresponding <c>SIG_OENx</c> signals must be set to 1.
-            The PCC I/O signals are dedicated inputs and outputs, so this doesn't apply.
+            See <see cref="T:Ttp.Meteor.SigTypes"/> documentation for details on the individual signals
             </summary>
             <seealso cref="T:Ttp.Meteor.SigTypes"/>
-            <param name="SignalId">The signal ID parameter
-            format is as follows:
+            <param name="SignalId">The signal ID parameter format is as follows:
+            <br/>
+            Byte 3 - XAddr (extended address, used for some signal types)
             <br/>
             Byte 2 - Pcc Number (1 - n)
             <br/>
@@ -192,7 +191,7 @@
             <summary>
             Set the parameter's value using the parameter's default scaling 
             </summary>
-            <param name="PrintEngineAddress">Address (see MakePEAddress)</param>
+            <param name="PrintEngineAddress">Address (see <see cref="M:Ttp.Meteor.PrinterInterfaceCLS.MakePEAddress(System.Int32,System.Int32,System.Int32,System.Int32)"/>)</param>
             <param name="ParamId">ID of the parameter to set</param>
             <param name="Value">Value to set.  Any precision finer than the parameter's default scaling value is lost.</param>
             <returns><c>RVAL_OK</c> if successful</returns>
@@ -221,25 +220,26 @@
             <summary>
             Get the parameter's value and scaling value. The scaling factor is in the top 32bits and
             the lower 32-bits contain the unscaled value. Divide the unscaled value by the scaling factor to get the final value.
+            Note that the unscaled value can be negative.
             </summary>
-            <param name="PrintEngineAddress">Address (see MakePEAddress)</param>
-            <param name="ParamId">ID of the parameter to set</param>
-            <param name="Value">Value to get. </param>
+            <param name="PrintEngineAddress">Address (see <see cref="M:Ttp.Meteor.PrinterInterfaceCLS.MakePEAddress(System.Int32,System.Int32,System.Int32,System.Int32)"/>)</param>
+            <param name="ParamId">ID of the parameter to get</param>
+            <param name="Value">Set with the parameter value on success</param>
             <returns><c>RVAL_OK</c> if successful</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetParamEx(System.Int32,Ttp.Meteor.eCFGPARAMEx)">
             <summary>
             Get the parameter's value scaled correctly, returning as a decimal. Returns 0 if there was a problem getting the parameter.
             </summary>
-            <param name="PrintEngineAddress">Address (see MakePEAddress)</param>
-            <param name="ParamId">ID of the parameter to set</param>
+            <param name="PrintEngineAddress">Address (see <see cref="M:Ttp.Meteor.PrinterInterfaceCLS.MakePEAddress(System.Int32,System.Int32,System.Int32,System.Int32)"/>)</param>
+            <param name="ParamId">ID of the parameter to get</param>
             <returns><c>Decimal</c>value of parameter requested</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.FromPEParam(System.UInt64)">
             <summary>
             Converts a value with its scaling factor in the top 32bits and the unscaled value in the lower 32-bits.
             </summary>
-            <param name="valIn"></param>
+            <param name="valIn">Raw parameter value returned by <see cref="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetParamEx(System.Int32,Ttp.Meteor.eCFGPARAMEx,System.UInt64@)"/> </param>
             <returns>unscaled value / scaling</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.MakePEAddress(System.Int32,System.Int32,System.Int32,System.Int32)">
@@ -448,54 +448,6 @@
             <param name="cfg"><c><see cref="T:Ttp.Meteor.TCurrentCfgDesc">TCurrentCfgDesc</see></c> to be updated</param>
             <returns><c>RVAL_OK</c> if the status structure was successfully updated</returns>
         </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetSG1024Eeprom(System.Int32,System.Int32)">
-            <summary>
-            Native call signature for PiGetSG1024ClassEeprom. This function is deprecated. use PiGetEepromData() instead.
-            </summary>
-            <returns>Pointer to unmanaged TAppSG1024Eeprom structure</returns>
-        </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetSG1024Eeprom(System.Int32,System.Int32,Ttp.Meteor.TAppSG1024Eeprom@)">
-            <summary>
-            Updates <c><see cref="T:Ttp.Meteor.TAppSG1024Eeprom">TAppSG1024Eeprom</see></c> structure for the specified head.
-            This function is deprecated. use PiGetEepromData() instead.
-            </summary>
-            <param name="pccnum">PCC Number (1 to n)</param>
-            <param name="hnum">Head Number (1 to 6)</param>
-            <param name="SG1024Eeprom"><c><see cref="T:Ttp.Meteor.TAppSG1024Eeprom">TAppSG1024Eeprom</see></c> to be updated</param>
-            <returns><c>RVAL_OK</c> if the status structure was successfully updated</returns>
-        </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetRG4HDCEeprom(System.Int32,System.Int32)">
-            <summary>
-            Native call signature for PiGetRG4HDCEeprom
-            </summary>
-            <returns>Pointer to unmanaged TAppRG4HDCEeprom structure</returns>
-        </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetRG4HDCEeprom(System.Int32,System.Int32,Ttp.Meteor.TAppRG4HDCEeprom@)">
-            <summary>
-            Updates <c><see cref="T:Ttp.Meteor.TAppRG4HDCEeprom">TAppRG4HDCEeprom</see></c> structure for the specified head.
-            This function is deprecated. use PiGetEepromData() instead.
-            </summary>
-            <param name="pccnum">PCC Number (1 to n)</param>
-            <param name="hnum">Head Number (1 to 6)</param>
-            <param name="RG4HDCEeprom"><c><see cref="T:Ttp.Meteor.TAppRG4HDCEeprom">TAppRG4HDCEeprom</see></c> to be updated</param>
-            <returns><c>RVAL_OK</c> if the status structure was successfully updated</returns>
-        </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetRG5Eeprom(System.Int32,System.Int32)">
-            <summary>
-            Native call signature for PiGetRG5Eeprom
-            </summary>
-            <returns>Pointer to unmanaged TAppRG5Eeprom structure</returns>
-        </member>
-        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetRG5Eeprom(System.Int32,System.Int32,Ttp.Meteor.TAppRG5Eeprom@)">
-            <summary>
-            Updates <c><see cref="T:Ttp.Meteor.TAppRG4HDCEeprom">TAppRG5Eeprom</see></c> structure for the specified head.
-            This function is deprecated. use PiGetEepromData() instead.
-            </summary>
-            <param name="pccnum">PCC Number (1 to n)</param>
-            <param name="hnum">Head Number (1 to 6)</param>
-            <param name="RG5Eeprom"><c><see cref="T:Ttp.Meteor.TAppRG5Eeprom">TAppRG5Eeprom</see></c> to be updated</param>
-            <returns><c>RVAL_OK</c> if the status structure was successfully updated</returns>
-        </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetCompactFlashStatus">
             <summary>
             Native call signature for PiGetCompactFlashStatus
@@ -590,6 +542,15 @@
             </summary>
             <param name="logMessage"></param>
             <returns><c>RVAL_OK</c> or <c>RVAL_EMPTY</c></returns>
+        </member>
+        <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiCreateStatusReport(Ttp.Meteor.TStatusReportParams)">
+            <summary>
+            Create a PrintEngine status report.
+            This function blocks either until the report is fully created or until the report creation starts, depending
+            on the value of BIT! in <see cref="F:Ttp.Meteor.TStatusReportParams.CtrlFlags"/>.
+            </summary>
+            <param name="reportParameters">Report control flags and additional user message.</param>
+            <returns>RVAL_OK if the status report was successfully created / started, or an error code.</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiCanClosePrinter">
             <summary>
@@ -773,19 +734,27 @@
             <returns><c>RVAL_NOTUSED</c></returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetVersion">
-            <summary>
-            Returns the version number of the (underlying unmanaged) printer interface library.
-            The version is returned as (MAJOR VERSION * 100) + MINOR_VERSION.
-            The version number of the print engine can be found in TAppStatus.
-            </summary>
-            <returns>Version number</returns>
+             <summary>
+             Returns the version number of the (underlying unmanaged) printer interface library (not the PrintEngine istelf).
+             The version is returned as (MAJOR VERSION * 100) + MINOR_VERSION.
+            
+             The version number of the PrintEngine can be found in TAppStatus::PeVersion.
+             
+             </summary>
+             <returns>Version number</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetBuildNumber">
             <summary>
-            Returns the build number of the (underlying unmanaged) printer interface library.
+            Returns the build number of the (underlying unmanaged) printer interface library (not the PrintEngine istelf).
             Every release of Meteor has a unique build number, which is a combination of the BUILD (least significant 16 bits) and the
-            REVISION (most significant 16 bits) from the full version MAJOR.MINOR.BUILD.REVISION
-            The build number of the print engine can be found in TAppStatus.
+            REVISION (most significant 16 bits)
+            
+            The build number of the PrintEngine can be found in TAppStatus::PeBuildNumber.
+            
+             Version and build revision information makes full PrintEngine/PrinterInterface version: MAJOR_VER.MINOR_VER.BUILD.REVISION 
+             For example: 4.6.33003.12
+             In normal circumstances PrintEngine and PrinterInterface vesrions should be exactly the same, as soon as they are built and distributed together.
+             Version mismatch indicates a serious problem, for example, mixing Meteor binaries from different revisions, which is not acceptable.
             </summary>
             <returns>Build number</returns>
         </member>
@@ -821,13 +790,21 @@
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiReloadConfigValues(System.UInt32)">
             <summary>
-            Re-reads the config file from disk, and updates the Xoffsets and/or the Yoffsets from the [ControllerX] sections.
-            The new offsets take effect when the next print job is started.  Waveform filenames can also be re-loaded.
+            Re-reads the config file from disk, and updates the parameters specified in <paramref name="Flags"/>, for example reloading the
+            Xoffsets and/or the Yoffsets from the [ControllerX] sections, or reloading the waveform filenames.
+            The new parameter values normally take effect when the next print job is started.
             </summary>
-            <param name="Flags">
-            Set <see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_XOFFSETS"/> to reload all X offsets; 
-            Set <see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_YOFFSETS"/> to reload all Y offsets; 
-            Set <see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_WFMS"/> to reload all waveform file parameters
+            <param name="Flags">One or more of the following bits:
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_XOFFSETS"/></para> 
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_YOFFSETS"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_WFMS"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_DISABLED_NOZZLES"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_IMAGE_STORE_PARAMS"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_ADJUST_COLOUR_BALANCE"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_SCREEN_MODES"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_NOZZLE_COMPENSATION"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_WATERMARK"/></para>
+            <para><see cref="F:Ttp.Meteor.MeteorConsts.BM_CFG_RELOAD_TEMPERATURE_CONTRACTION"/></para>
             </param>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetHDCSerialNum(System.Int32,System.Int32)">
@@ -982,7 +959,7 @@
             Get a watermark for the given job using a third party watermarking program.
             </summary>
             <param name="watermarkDetails">Details of how to format the watermark.</param>
-            <returns>RVAL_OK on success</returns>
+            <returns>RVAL_OK on success, RVAL_EOF on success of final PositionId in the image</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiGetImageFileDetails(System.String,Ttp.Meteor.GenericImageFileDetails@)">
             <summary>
@@ -993,7 +970,7 @@
             </summary>
             <param name="filePath">Full path to the image file</param>
             <param name="bufferDetails">Details of the file (image dimensions, DPI, pixel bit depth etc.)</param>
-            <returns>RVAL_OK on success</returns>
+            <returns>RVAL_OK on success, RVAL_NOFILE if the file can't be found or accessed, RVAL_BAD_TYPE if the file is invalid</returns>
         </member>
         <member name="M:Ttp.Meteor.PrinterInterfaceCLS.PiCalculateImageBufferPixelCounts(System.UInt32,Ttp.Meteor.ImagePixelDetails@)">
             <summary>

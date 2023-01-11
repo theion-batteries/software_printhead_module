@@ -1,0 +1,30 @@
+=================================================================================================
+    Some information regarding Seiko 508GS palette settings
+=================================================================================================
+
+The traditional way to specify a palette for this head type is to 
+use following sttings in a config file:
+
+[508GS]
+Palette = 7,5,3,0,0,8  ; level0, level1, level2, level3[, spit[, tickle]]
+
+This setting is system - global, i.e. it applies to all heads in the whole system.
+
+
+It is also possible to change palette using CCP_HEAD_PALETTE command. But this change will also be 
+system-global, i.e. it is not possible to do ity on PCC/HDC/Head basis, new palette will be 
+applied to all heads on StartJob().
+
+
+    CCP_HEAD_PALETTE command addressing: It accepts following arguments to select PCC/HDC/Head:
+     * PccNum - PCC Number  [0..254]:  ignored
+     * HdcNum - HDC Number  [0..8]:    ignored 
+     * "aNum" - not used, should be 0
+
+    Parameter value is a 32-bit number, is low 6 nibbles represent "Palette" value setting, similar to 
+    the way it is represented in the config file. I.e. value 0x00753008 ha the same meaning as Palette = 7,5,3,0,0,8
+    in the config file.
+
+    It is possible to play with this parameter in TestApp: "Parameters" tab, "PiSetParam API" box.
+    E.g: set  id: 0x00000039,  val:0x00753008
+    On the next StartJob() new values should be used.

@@ -1,0 +1,47 @@
+=================================================================================================
+    
+    Some information on custom settings for particular PCCs in Meteor Config file
+
+=================================================================================================
+
+Usually Meteor config file contains a number of "Global" sections with data that applies to all PCCs in the system.
+For example, [Encoder], [ProductDetect] and some other. 
+This might be a problem, especially for mixed-head types system, where different PCCs needs different 
+settings. It is also applicable to multi-master systems as well.
+
+There is a way (though pretty far from ideal) to specify _some_ settings for a particullar PCC.
+These settings have special names and should be placed in [ControllerX] section.
+
+List of these settings:
+
+
+[ControllerX]
+EncoderMultiplier=...  ; overrides value from [Encoder]->Multiplier
+EncoderDivider   =...  ; overrides value from [Encoder]->Divider
+PrintClock       =...  ; overrides value from [Encoder]->PrintClock
+EncoderInvert    =...  ; overrides value from [Encoder]->Invert
+
+
+PdOffset    =... ; overrides value from [ProductDetect]->Xoffset
+PdOffsetRev =... ; overrides value from [ProductDetect]->XoffsetRev
+PdYOffset   =... ; overrides value from [ProductDetect]->Yoffset
+PdActiveLow =... ; overrides value from [ProductDetect]->ActiveLow
+AutoPd      =... ; overrides value from [ProductDetect]->AutoPd
+
+
+Tickle  =... ; overrides value from [System]->Tickle
+
+;-- these are some PCC-specific settings, check out documentation for their meaning
+FireOut
+BlankDocOut
+InImageOut
+PdOut
+
+;-- these are some obscured KJ4 settings
+PixelMode
+DSEL
+
+
+;-- there are also some sort-control settings, but they are beyond of this document scope
+
+

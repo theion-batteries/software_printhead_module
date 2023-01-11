@@ -1,0 +1,218 @@
+=================================================================================================
+    Some information on the waveform files for Epson S3200 head family 
+    This information is also applicable for Epson T3200 head family because it uses the same ASICs
+=================================================================================================
+
+   
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is 1 to 4 
+    (this head has max BPP value 2). Pulse numbers start from 0. 
+
+
+*   Each pulse is described by a section [Pulse0]...[Pulse3]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments". 
+    Number of segments in the pulse is usually 2 or more, they are described by keys  Seg0..Seg15 in a pulse section. 
+    Segments numbering should be sequential, no gaps allowed.
+    There is one special case: a pulse can be made of one segment in case when segment start and end 
+    voltages are the same and slew rate is 0. This is for simpler generation of "flat" pulses.
+
+*   Max. total number of segments in a whole WF is 32; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                ___.
+         .\   .       .  /   .
+         . \__.       . /    .
+         .    .\      ./     .
+         .    . \-----.      .
+         .    .       .      .
+           S0     S1     S2
+
+
+
+
+* Waveform constraints:
+
+ - 1..4 pulses per Waveform, 1..16 segments per pulse, up to 32 segments in total.
+ - Whole WF should start and end at the same voltage.
+ - WF start voltage must be >= VIdle, which is 6.0v, see specs
+ - WF min voltage must be >= "Base Voltage" which is 2.5v, see specs
+ - WF max voltage is 37.5 volts.
+ - No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ - No voltage discontinuity between segments within one pulse
+ - Hold time can't be < 25ns and > 1024*25ns = 25600ns
+ - slew rate: segment raising or falling edge duration can't be < 25ns and > 1024*25ns
+ - ComA and ComB waveforms mutual constraints, see below
+      
+
+=================================================================================================
+"Large drop" (ComA) and "Small drop" (ComB) waveforms
+=================================================================================================
+These type of head requires two waveforms: 
+    - ComA or "Large drop"  in datasheet terminology
+    - ComB or "Small drop"  in datasheet terminology
+
+Jetting pulses from ComA/ComB are selected by the head depending on PrintData and GrayLevel masks (see below).
+
+Thus, it is necessary to use 2 WF files that describe "ComA" and "ComB" waveforms.
+These files have identical file name and .ComA and .ComB file extensions. They must reside in the same directory.
+
+E.g. "TestS3200_Waveform.ComA" + "TestS3200_Waveform.ComB" - these 2 files describe a complete waveform.
+"ComA" waveform file is referenced from Meteor *.cfg file in a standard way. And Meteor will look for the file
+with the same name and ".ComB" extension in the same directory.
+Internal structure of these files is completely identical, some data will be different for ComA and ComB 
+waveform types.
+
+[generic] section of the WF file must contain line "WaveformType = ComA" or "WaveformType = ComB" for 
+corresponding WF types.
+
+The user is responsible for synchronising ComA and ComB waveforms by selecting proper segments, 
+slew rates and hold times.
+
+
+=================================================================================================
+     Hardware configuration:
+=================================================================================================
+    
+    * HDC-ES3200 drives one head        
+    * ES3200 head has 4 "chips" or "ASICs". They are referred as Jetting Assemblies (JAs) by Meteor.
+    * Every ASIC drives 2 nozzle rows: rowA and rowB (nozzle rows are not related to ComA/ComB waveforms)
+    * Each ASIC in theory can have its own independent wafeform (comprised by .ComA and .ComB WF files pair).
+      In practice they are likely to have the same WF shape, but with slightly different scaling factor.
+      See "WF voltage scaling" section for more details.
+
+    * Within an ASIC both its nozzle rows: RowA and RowB share the same waveform, but these nozzle rows can have
+      different GreyLevel masks (see below).
+
+
+    * it is possible to specify an optional "tickling waveform" that applies to the head the same way
+      as normal working one, but only when there is no encoder pulses (head is idle). 
+      In order to achieve this a parameter "TickleWaveformFileIdx" can be specified. Its default value 
+      is 0, which means "tickling is disabled". It it has a value of a correct waveform file index, then 
+      corresponding waveform will be used as tickling one.
+
+
+
+    Configuration example:
+
+    [EPSON_S3200] ;-- "head" section
+    Waveform1 = "Waveform\Epson\S3200\TestS3200_Waveform.ComA"  ; working waveform file1 
+    Waveform2 = "Waveform\Epson\S3200\TestS3200_Waveform2.ComA" ; working waveform file2  
+    Waveform3 = "Waveform\Epson\S3200\S3200Tickle_Waveform.ComA"; tickling WF
+
+
+    ;--- Global system default settings
+    [DefaultParameterValues]
+    WaveformFileIdx       = 1 ; Global default value
+    TickleWaveformFileIdx = 0 ; Don't use tickling waveforms
+
+
+    [Controller1]             ;--- PCC level (overrides settings in [DefaultParameterValues] section)
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveforms:  "TestS3200_Waveform"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveforms: "S3200Tickle_Waveform"   
+
+
+    [Head1:1]                 ;--- Head level (overrides settings in [Controller1] section)
+    WaveformFileIdx       = 1,1, 2,2 ;-- working  waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+    TickleWaveformFileIdx = 0,0, 3,3 ;-- tickling waveforms for PCC:1, Head1, JA1, JA2, JA3, JA4 respectively
+    
+
+
+
+=================================================================================================
+ ComA/ComB waveform specifics.
+=================================================================================================
+
+==== Pulses and Grey level masks
+    
+As mentioned above, a waveform can have upto 4 pulses and it is possible to specify if this 
+particular pulse will be printing for the given grey level.  
+It is achieved by "Grey Level Mask". It has 4 bits that are set if this pulse will be printing
+for the given grey level.  
+
+Some GLMask examples:
+
+                3210 <- Grey level value                        
+                ||||                                            
+pulse   0x08 -> 1000   prints for GL value 3                
+mask    0x0c -> 1100   prints for GL value 3,2                
+value:  0x0e -> 1110   prints for GL value 3,2,1                
+        0x04 -> 0100   prints for GL value 2 
+
+The typical mask value is 0x0E, which means that this pulse will be used for printing for GL values 3,2,1 and
+won't print for GL value 0.                
+
+
+The GLMask also used to select between "large drop" and "small drop" pulses from ComA/ComB waveform files.
+This imposes some constrains on GLMask between ComA/ComB waveforms: 
+    * It is not possible to use the same pulse in both ComA/ComB waveforms, so, the same bit in mask can't be set 
+      in both ComA/ComB waveforms masks.
+
+
+Also, a single ASIC drives 2 nozzle rows: rowA and rowB, and these rows can have independent GL masks.
+So, every pulse in WF file must have 2 GL masks: GLMask_A, GLMask_B for nozzle rows: rowA and rowB accordingly.
+
+
+=================================================================================================
+==== WF temperature / voltage compensation
+!! Important it is applicable only for S3200/S1600/S800 heads  
+
+
+ES3200 head requires changing some pulses driving voltage depending on the head temperature.
+Temperature compensation criteria is as follows:
+
+    * The segment must be marked as "eligible" for temperature compensation.
+      It is done by providing "TempCompMask" parameter in every [PulseX] section. This parameter
+      should have bits set for the corresponding pulse's segments numbers that require temperature compensation.
+      E.g. value 0x0001 marks Seg0 as "compensated", value 0x0006 marks Seg1,Seg2 as "compensated".
+
+    * The segment of "T-compensated" pulse must have positive voltage slew rate (the voltage must increase)
+    * This voltage should be above specified "Low Threshold" 
+    * The voltage will increase until it reaches "High Threshold", which value depends on a temperature 
+
+ -- Waveform voltage/temperature compensation parameters
+
+ These parameters can be specified in a WF file. in a section [TemperatureCompensation].
+ If there is no such section in WF file, then there won't be temperature compensation.
+ Otherwise, following parameters must be specified (see also example WF files):    
+
+    [TemperatureCompensation]
+    Enabled    = 1          ; 0 to disable T compensation, 1 to enable
+    TCompLow   = 40.0       ; Low temperature threshold for compensation,  40C by default
+    TCompHigh  = 45.0       ; High temperature threshold for compensation, 45C by default
+    VCompStart = 24.0       ; Voltage threshold for starting compensation, Volts  
+    VCompEnd   = 29.5       ; Max. voltage that can be achieved by compensation, Volts  
+    VTCoef     = -0.0146    ; Voltage/Temperature coefficient, Volts/DegC 
+
+
+
+
+
+
+
+
+

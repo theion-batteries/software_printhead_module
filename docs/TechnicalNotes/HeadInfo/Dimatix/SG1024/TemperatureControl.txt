@@ -1,0 +1,87 @@
+=================================================================================================
+    Some information regarding temperature control for Dimatic SG1024 ("Starfire") head
+=================================================================================================
+
+
+Starfire HDC supports 2 temperature control channels:
+
+    1. Head tempearure control.
+       Starfire head has a built-in thermistor and a heater. So, HDC tries to keep head temperature equal to 
+       set temperature. Head terget temperature is specified in a config file as follows:
+       Default value 0 means that head temperature control is turned OFF.
+       Valid range of this parameters is [0..60] degrees C.   
+       Head target/measured temperatures are displayed in Monitor->"Status" tab.
+
+
+    2. "Aux" or "External" temperature control.
+
+        HDC board has "Aux thermistor" connector where you can connect a thermistor (100K, B-const:3380)
+        and it can also provide PWM signal to control external heater. 
+        If configured, PWM output is mapped to GPIO1 (pin2 on GPIO connector on HDC board).
+    
+        Default value 0 means that AUX temperature control is turned OFF ang GPIO1 is now used for PWM output
+        Valid range of this parameters is [0..60] degrees C.   
+
+        Aux target/measured temperatures are displayed in Monitor->"Status" tab.
+        
+
+
+
+------------------ Legacy (not recommended any longer) way of setting head / aux target temperatures.
+These legacy Head/Aux target temperature settings in config file apply to the whole system. i.e. to 
+all heads on all HDCs. It is possible to assign individual target temperatures to different HDCs 
+by using CCP_HEAD_TEMP (head target temperature) and CCP_AUX_TEMP (Aux target temperature) parameters. 
+
+
+    [Starfire]
+    HeadTemperature = 46.8 ; Built in head heater target temperature (0 for no temp control)
+    ExtTemperature  = 36.5 ; External heater target temperature (0 for no temp control)
+
+------------------ Modern way of setting Head/Aux target temperatures.
+There are now two ConfigEngine parameters that allow specifying Head(channel1) and Aux(channel2) target temperatures:
+
+KPEX_TargetTemp, id:CPEX_TargetTemp, valid range:[0.0..60.0], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+KPEX_AuxTargetTemp, id:CPEX_AuxTargetTemp, valid range:[0.0..60.0], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+
+They can be used down to HDC level, allowing setting target temperatures for individual HDCs/Heads. For example:
+
+    [DefaultParameterValues]      ;-- global default values for the WHOLE system
+    HeadTargetTemperature = 22.3  ;-- target head temperature for ALL heads in the ssytem
+    AuxTargetTemperature = 0;     ;-- 0 means "temperature control is disabled"
+
+    [HeadDriver1:4] ;-- settings specific to the head on  PCC:1, HDC:4
+    HeadTargetTemperature = 52.7  ;-- target head temperature for the head on PCC:1, HDC:4
+    AuxTargetTemperature = 40.0;  ;-- target "Aux" temperature for the PCC:1, HDC:4
+
+
+
+Using old "HeadTemperature" and new parameters in the config file is not recommended, this may lead to confusion.
+
+
+
+
+
+------------------ Getting real heater temperatures
+
+The real (measured) values of heads temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    Head temperature
+TAppHeadStatus::Temperature2    Aux temperature 
+TAppHeadStatus::Temperature3    HDC Amplifier1 Temperature
+TAppHeadStatus::Temperature4    HDC Amplifier2 Temperature
+TAppHeadStatus::Temperature5    Head target temperature
+TAppHeadStatus::Temperature6    Aux target temperature
+TAppHeadStatus::HeaterPwm       High16 bits: Ext.Heater PWM value, Low16 bits: Head Heater PWM value.
+
+
+
+
+
+
+

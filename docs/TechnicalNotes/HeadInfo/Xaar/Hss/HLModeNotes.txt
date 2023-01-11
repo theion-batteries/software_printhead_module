@@ -1,0 +1,29 @@
+=================================================================================================
+    High Laydown mode (HLM) notes for Xaar 1001 (HSS) head
+=================================================================================================
+
+
+There is a parameter KPEX_HLM_NPClk that controls head firing in HLM.  It can be set to any value [1,255], 
+and it's default value is 32.
+
+It can be specified in a config file, with the name: "HLModeNPclks" in following sections: 
+[HSS] for whole system and in [ControllerX] on a PCC level.
+
+Setting this parameter in [ControllerX] allows setting different values for individual HDCs on a given PCC,
+but in this case you'll have to provide a list of 8 values, one per HDC.
+
+Example:
+    
+    [HSS]
+    HLModeNPclks = 42 ;-- global default value for whole system
+
+    [Controller1]
+    HLModeNPclks = 15,16,17,18,19,20,21,22 ;-- Values for Pcc1:Hdc1...Pcc1:Hdc8 respectively.
+
+
+    
+
+
+
+
+

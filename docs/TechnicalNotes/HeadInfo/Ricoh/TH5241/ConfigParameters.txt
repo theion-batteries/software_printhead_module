@@ -1,0 +1,88 @@
+=================================================================================================
+    Some information about configuration parameters for Ricoh TH5241 head type.
+=================================================================================================
+
+This document contains description of so called "PrintEngine" parameters (PeParameters) that configure 
+Meteor PrintEngine for the particular head type.  Some of the parameters are generic for all head types, some of them
+exist only for specific head types.
+This document doesn't describe technical details of PeParameters scopes, overriding mechanism and so on.
+
+Most of the parameters can be set via configuration file and via SetParamEx() API.
+All parameters can be read via GetParamEx() API.
+
+Parameter is identified as follows:
+
+name:           Name in the Meteor config file. 
+id:             Parameter Id to use for SetParamEx/GetParamEx API
+valid range:    Some parameters can have restricted values. E.g. voltage in range [5.2...25.0] volts.
+def:            default value
+scope:          Config file PCC/HDC/Head/JA level this parameter can be applied to.
+
+
+-------------------------------------------------------------------------------------------------
+----------- generic parameters that apply for all head types most of the times
+-------------------------------------------------------------------------------------------------
+
+name:Xoffsets, id:CPEX_X_Offset, valid range:any, def:0, scope: HDC-[HeadDriverX:Y] section
+Head X-offset in 1/100 of a pixel (centipixels, cpix)
+Note that in a config file XOffset values specified in pixels.
+
+---
+
+name:Yoffsets, id:CPEX_Y_Offset, valid range:any, def:0, scope: HDC-[HeadDriverX:Y] section
+Head Y-offset in pixels 
+
+---
+
+name:WaveformFileIdx, id:CPEX_WF_FileIdx, valid range:[1..40], def:1, scope:ANY.
+Waveform file index. For more information see "WF_Info.txt" file in head-specific Waveform directory.
+
+---
+
+name:KPEX_TickleWF_FileIdx, id:CPEX_TickleWF_FileIdx, valid range:[1..40], def:1, scope:ANY.
+Tickle waveform file index. For more information see "WF_Info.txt" file in head-specific Waveform directory.
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:Row_X_Adj_um, id:CPEX_RowX_Adj_um, valid range:[-999..999], def:0, scope:ANY.
+Nozzle row fine adjustment in microns. Offset from the nominal position.
+
+name:Row_X_Adj_cpix, id:CPEX_RowX_Adj_cpix, valid range:[-600..600], def:0, scope:ANY.
+Nozzle row fine adjustment in cpix. Offset from the nominal position.
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:RevScan_X_Adj_cpix, id:CPEX_RevScan_X_Adj_cpix, valid range:ANY, def:0, scope:ANY.
+X Adjust value for reverse scan in cpix. Offset from the nominal position.
+
+name:RevScan_X_Adj_um, id:CPEX_RevScan_X_Adj_um, valid range:ANY, def:0, scope:ANY.
+X Adjust value for reverse scan in microns. Offset from the nominal position.
+
+
+---
+These 2 parameters are mutually exclusive. Only one of them can be used in a config file at the same time
+
+name:FwdScan_X_Adj_cpix, id:CPEX_FwdScan_X_Adj_cpix, valid range:ANY, def:0, scope:ANY.
+X Adjust value for forward scan in cpix. Offset from the nominal position.
+
+name:FwdScan_X_Adj_um, id:CPEX_FwdScan_X_Adj_um, valid range:ANY, def:0, scope:ANY.
+X Adjust value for forward scan in microns. Offset from the nominal position.
+
+
+-------------------------------------------------------------------------------------------------
+----------- Head-specific parameters
+-------------------------------------------------------------------------------------------------
+
+KPEX_WF_VScaleMode
+KPEX_WF_VScaleCoeff
+For these parameters see "WF_Info.txt" file in a corresponding Waveform directory.
+
+
+
+
+
+
+
+

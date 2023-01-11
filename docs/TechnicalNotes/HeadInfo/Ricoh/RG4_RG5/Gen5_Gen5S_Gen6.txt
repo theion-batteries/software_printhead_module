@@ -1,0 +1,74 @@
+=================================================================================================
+    Some information on using Ricoh Gen5/Gen5S/Gen6 heads
+=================================================================================================
+
+Meteor supports several modifications (or "sub-types") of Ricoh Gen5 heads:
+
+    * Gen5      head (MH5420, MH5440)
+    * Gen5S     head (MH5220)
+    * GEN6      head (MH5320/MH5340)
+    * GEN6_Fast head (MH5422/MH5442)
+
+The most significant difference between these head sub-types from Meteor point of view is nozzle row positions within
+the head. It is also possible to mix these sub-types within one PCC.
+
+
+The old way of specifying head sub-type was using a number of parameters that provided nozzle rows positions 
+(see below), and Meteor assumed that the rest of the Gen5/Gen5S/Gen6 properties is absolutely the same.
+But updated specs from Ricoh now say that the max. temperature for Gen5/Gen6 heads is 60C and the max. temperature
+for Gen5S variant is 50C. Also, Gen5S requires slower heating rate comparing to Gen5.
+
+This has lead to the fact that it is now necessary to specify head sub-type explicitly in the Meteor Config file and 
+some parameters, like nozzle rows separations, max. had tempearture and heater parameters will be set up 
+depending on a concrete sub-type.
+
+This partameter is:
+
+    HeadSubType = 0     ; Head sub-type: 0 for Gen5 variant, 1 for Gen5S variant, 2 for Gen6, 3 for for Gen6_Fast . 
+
+It can be placed in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y] sections, witch allows mixing different
+sub-types within one PCC.
+
+If this parameter is missing, Meteor will log error message that looks like:
+
+*** PrintEngine::Rg5Head::ProcessHeadSubTypes() Invalid or not specified head sub-type:255, using default
+
+And it will fall back to default Gen5 variant.
+
+
+
+
+
+------------------------------------------------------------------------
+-- old way of selecting Gen5/Gen5S/Gen6 head sub-type by providing nozzle rows/ JA separations.
+-- It is still possible to use these parameters, but tere is no real need for it now.
+
+
+Meteor config file needs following parameters:
+    *  NR_XSep_um - this is a distance between nozzle rows A-B or C-D in microns
+    *  JA_XSep_um - this is a distance between "nead halves" or nozzle rows A-C or B-D in microns
+
+
+If you are using the original Gen5 head, no settings required, Meteor will use default values.
+
+Default config file "DefaultRicohGen5_PccE.cfg" already contains commented-out setting:
+
+
+;-- These are the default values - correct for the standard Gen5 head (MH5420, MH5440)
+;NR_XSep_um        = 550.3 ;-- distance between nozzle rows for one jetting assembly, microns
+;JA_XSep_um        = 11811 ;-- distance between jetting assemblies, microns
+
+;-- These values must be specified if using the small-drop GEN5S head (MH5220)
+;NR_XSep_um        = 931.3 ;-- distance between nozzle rows for one jetting assembly, microns
+;JA_XSep_um        = 9313  ;-- distance between jetting assemblies, microns
+
+;-- These values must be specified if using the GEN6 head (MH5320/MH5340)
+;NR_XSep_um        = 1100  ;-- distance between nozzle rows for one jetting assembly, microns
+;JA_XSep_um        = 11811 ;-- distance between jetting assemblies, microns
+
+
+They can be placed in [DefaultParameterValues] section (applies for the WHOLE system), or in [HeadDriverX:Y]
+section. In the latter case these setting will override default ones from [DefaultParameterValues], allowing
+individual diffrerent head sub-types for different HDCs.
+
+

@@ -1,0 +1,165 @@
+=================================================================================================
+    
+Some information on the waveform files for Konica Minolta KM300, M600SH MEMS heads.
+
+The waveforms for both KM300 and KM600 heads appears to be the same, though 1200DPI KM300 supports only 1 and 2 bits
+per pixel
+
+
+=================================================================================================
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is usually [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+    There is one special case: a pulse can be made of one segment in case when segment start and end 
+    voltages are the same and slew rate is 0. This is for simpler generation of "flat" pulses, especially for COM1 type
+    waveforms.
+
+
+*   Max. total number of segments in a whole WF is 32; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                ___.
+         .\   .       .  /   .
+         . \__.       . /    .
+         .    .\      ./     .
+         .    . \-----.      .
+         .    .       .      .
+           S0     S1     S2
+
+
+
+
+* Waveform constraints:
+
+ - 1..8 pulses per Waveform, 1..8 segments per pulse, up to 32 segments in total.
+ - Whole WF should start and end at the same voltage.
+ - No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ - No voltage discontinuity between segments within one pulse
+ - Hold time can't be < 50ns and > 65535*50ns = 3276750ns
+ - absolute Min & Max voltages are properties of the hardware and hardcoded [0..36000] mv
+ - hold time for the last segment in a pulse should be > 900ns  
+ - slew rate: segment raising or falling edge duration can't be < 50ns and > 65535*50ns
+ - Waveform min. voltage can't be less than 500mv   
+ - COM1 and COM2 waveforms synchronised:
+    * VRef (starting and ending voltage) must be the same for COM1 and COM2 waveforms
+    * number of pulses in COM1 and COM2 waveforms must be the same
+    * COM2 WF pulses that correspond to COM1 ones must have the same duration and the same start / end 
+      voltages. I.e. some PulseN in both COM1 and COM2 must have same VStart, VEnd and duration.     
+
+
+=================================================================================================
+"Working" (COM2) and "Tickling" (COM1) waveforms
+=================================================================================================
+These types of KM MEMS heads need at least 2 different waveforms: 
+    - "Working"     or "COM2" in datasheet terminology
+    - "Tickling"    or "COM1" in datasheet terminology
+
+Thus, it is necessary to use 2 WF files that describe "COM1" and "COM2" waveforms.
+
+"COM2" or "working" waveform file is referenced from Meteor *.cfg file in a standard way. 
+In its [generic] section it must contain line "WaveformType = COM2" and a file name for the "COM1" waveform file as
+"Com1Waveform" key value. This is the way "COM2" and "COM1" waveforms are linked together.
+
+In turn, "COM1" waveform file in its [generic] section must contain line "WaveformType = COM1" to identify its type.
+Several COM2 WF files can "include" the same COM1 file.
+
+The user is responsible for synchronising COM2 and COM1 waveforms by selecting proper segments, slew rates and hold times.
+
+
+=================================================================================================
+"Working" (COM2) waveform specifics.
+=================================================================================================
+
+1.  Every pulse in COM2 waveform should have a bit of information telling if this pulse will be ejecting ink 
+    for a given grayscale value.
+    This information is provided as a set of OPRs (Output pattern registers). See head specs for mapping OPR 
+    contents to COM1 and COM2 waveform pulses.
+    
+    There are 8 OPR registers that need to be specified.
+    They are listed in [OPR] section of the config file. It must contain exactly 8 keys "OPR0"..."OPR7". Each key 
+    must have 8 bit value. 
+    Basically, OPR number [0..7] corresponds to the pixel data value [0..7] (3BPP max).
+
+        An example:
+        [OPR]
+        OPR0 = 0x00 ;- for pixel value = 0, should be 0 normally.
+        OPR1 = 0x02 ;- for pixel value = 1                       
+        OPR2 = 0x02 ;- for pixel value = 2                       
+        OPR3 = 0x02 ;- for pixel value = 3                       
+        OPR4 = 0x02 ;- for pixel value = 4                       
+        OPR5 = 0x02 ;- for pixel value = 5                       
+        OPR6 = 0x02 ;- for pixel value = 6                       
+        OPR7 = 0x02 ;- for pixel value = 7                       
+
+
+ 2.  Currently we use only 1 COM2 WF file for whole head (different heads can have different COM2 waveforms), so, all
+    4 sub-parts of the head (referred later as JA) will have the same WF shape in terms of number of segments, number of pulses,
+    timings and grey level masks. On the other hand, it is possible to adjust WF voltages for every JA on the particular head.
+    Pulse/segment/whole WF duration will stay the same, but WF amplitude can be tuned for every JA individually by multiplying
+    to some coefficient.
+
+    ==== Waveform voltages scaling 
+
+    WF voltage adjustment (scaling) has 2 modes: 
+        * keeping WF segments hold time (slew rate changes)
+        * keeping WF slew rate constant (segment hold time changes)
+
+    In both modes whole segment/pulse/WF duration stays the same.
+    Scaling applies to COM2 (working) waveforms only. COM1 waveforms are not affected. 
+    After waveform scaling its VRef (staring/ending voltage) stays the same, but amplitude of pulses changes.
+    This is because all 4 COM2 and COM1 waveforms must have the same VRef.     
+
+
+    WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+    
+    "WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+    Note that it has quite narrow range.
+
+    "WF_VScale_Mode" Specifies mode of scaling: either keeping pulse width (and whole WF length) constant or 
+    keeping slew rate and pulse hold time constant. If scaling mode is  0 there will be no scaling at all.
+    Possible values are:  0:scaling disabled, 1:keep pulse width (default), 2:keep slew rate
+
+    Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y:Z]. 
+    Usual mechanism of “parameters overriding” applies.
+
+    If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+
+
+
+
+
+
+
+
+
+

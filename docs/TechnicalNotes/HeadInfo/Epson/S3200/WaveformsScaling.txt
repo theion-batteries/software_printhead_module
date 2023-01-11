@@ -1,0 +1,154 @@
+=================================================================================================
+    Some information on the waveform scaling files for EpsonS/T head family heads
+=================================================================================================
+
+Waveforms scaling is a simple way to slightly adjust waveform voltages without changing much
+WF shape. It is usually much simpler than editing each individual waveform in an editor, and it 
+uses just a couple of parameters that can be set up in Meteor config file or via SetParamEx() API.
+Because of its simplicity it has a pretty limited functionality.
+
+
+Probably the most common case of using WF scaling is adjusting print intensity of the individual ASICs within one
+head. Recommended ASIC waveform voltages can be obtainned from the head EEPROM data (see "HeadEepromData.txt"), voltage
+codes are also included into QR code on head packaging.
+In this case one waveform can be used for the whole head, but it may be scaled slightly differently for individual
+head ASICs.
+
+
+==== ComA and ComB waveforms constraints
+
+        * every waveform must have a minimal "base voltage" VBase, which is 2.5V
+        * ComA/ComB start voltages (VStart) must be the same
+        * ComA/ComB end  voltages (VEnd) must be the same
+        * ComA/ComB total length must be the same
+        * every PULSE in every waveform must have the same VStart and VEnd.
+
+
+
+ As mentioned in "WF_Info.txt" waveform is made of a number of Pulses, and every Pulse is made of 
+ a number of Segments.  An example of a typical WF pulse made of 3 segments is shown below:
+
+
+
+           . Seg0  .<--- Seg1 --->.<-Seg2-> .
+           .       .              .         .
+           .       .       /------.         .
+           .       .      /       .\        .
+           .       .     /        . \       .
+  VStart-> \       .    /         .  `------. <- VEnd
+           .\      .   /          .         .   
+           . \     .  /           .         .   
+           .  \    . /            .         .    
+  VBase->  .   \___./             .         .         
+           .       .              .         .
+    0V->  ------------------------------------------------
+
+
+==== Waveform voltages scaling options in brief. 
+
+    -- scaling mode
+    WF voltage adjustment (scaling) has 2 modes: 
+        * keeping WF segments hold time (slew rate changes)
+        * keeping WF slew rate constant (segment hold time changes)
+    This mode applies to both ComA and ComB waveforms
+
+    -- Generic Waveforms scaling (similar to other head types with trapezoidal waveforms)
+    For this case both ComA and ComB waveforms are scaled using the same coefficient. 
+    This coefficient is used as a multiplier to the WF voltage from WF file. 
+    As a result, ALL voltages for both ComA and ComB changed, including VStart and VEnd.
+    VStart and VEnd for every pulse (and whole WF) are scaled the same way, so, mutual ComA/ComB
+    contraints are not broken.
+
+    -- Individual ComA/ComB Waveforms scaling 
+    For some strange reason it might be required to use different scaling coefficients for ComA and
+    ComB waveforms. It is possible to do, but not as obvious as "generic scaling".
+    For this case ComA and ComB waveforms have their own independent scaling coefficients.
+    The problem is that despite potentially different scaling coefficients, ComA and ComB waveforms
+    still must have the same VStart and VEnd. So, the scaling is more complicated:
+    
+        - For the very FIRST segment in every WF pulse 
+              * VStart is kept the same (not scaled)
+              * Segment hold time is kept the same
+              * Whole segment duration is kept the same
+              * Segment end voltage is scaled
+              * segment slew rate is adjusted accordingly
+
+        - For the very LAST segment in every WF pulse 
+              * VEnd is kept the same (not scaled)
+              * Segment hold time is kept the same
+              * Whole segment duration is kept the same
+              * Segment START voltage is scaled
+              * segment slew rate is adjusted accordingly
+        
+        - All segments in the pulse between very first and very end scled as usual (see Generic Waveforms scaling)
+        As a consequence, it is not possible to change waveform VStart and VEnd when scaling ComA/ComB individually.
+
+    
+    Note that when waveform data is processed, first, "Generic Waveforms scaling" is applied for both ComA and ComB
+    and then "Individual" coefficients are applied for ComA and ComB. Thus, basically, 
+    ComA is scaled by (genericCoeff*ComA_Coeff) and ComB is scaled by (genericCoeff*ComB_Coeff).
+    All coefficients and their scaling must be in a range: [0.5, 1.5].
+    By default all coefficients have value 1.0, so, nothing happens.
+
+    Waveform base voltage VBase(2.5V) is preserved and remains the same.
+    For example, if we have a waveform with voltage range [2.5, 25.0] Volts and use WF_VScale_Coeff=1.2, then
+    the result voltage range will be: [2.5, 29.5] Volts: 2.5 + (25.0-2.5)*1.2 == 29.5
+
+
+    If due to scaling WF voltages/timings go out of valid range, then error message is logged and waveform is ignored.
+
+
+==== Waveform voltages scaling configuring:
+
+    -- scaling mode parameter:    
+
+    name:WF_VScale_Mode, id:CPEX_WF_VScaleMode, valid range:[1,2], def:1.0, scope:ANY.
+
+    "WF_VScale_Mode" parameter specifies mode of scaling: either keeping pulse width (and whole WF length) constant or 
+    keeping slew rate and pulse hold time constant. If scaling mode is 0 there will be no scaling at all.
+    Possible values are:  0:scaling disabled (default), 1:keep pulse width, 2:keep slew rate
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+
+    -- Generic Waveforms scaling parameter:
+    name:WF_VScale_Coeff, id:CPEX_WF_VScaleCoeff, valid range:[0.5, 1.5], def:1.0, scope:ANY.
+    "WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+    Applies to both ComA/ComB waveforms.
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+
+    -- ComA Waveform scaling parameter:
+    name:WF_VScale_Coeff_ComA, id:CPEX_WF_VScaleCoeff_ComA, valid range:[0.5, 1.5], def:1.0, scope:ANY.
+    "WF_VScale_Coeff_ComA" is just a coefficient [0.5...1.5] that used as a multiplier to ComA waveform 
+    voltages(see above). 
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+    -- ComB Waveform scaling parameter:
+    name:WF_VScale_Coeff_ComB, id:CPEX_WF_VScaleCoeff_ComB, valid range:[0.5, 1.5], def:1.0, scope:ANY.
+    "WF_VScale_Coeff_ComB" is just a coefficient [0.5...1.5] that used as a multiplier to ComA waveform 
+    voltages(see above). 
+    It can be placed in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+    Usual mechanism of “parameters overriding” applies.
+
+
+
+    
+    Some brief config file example:
+
+    ;--- settings specific for PCC1:HDC1
+    [HeadDriver1:1]
+    WaveformFileIdx = 1 ; WaveformID applied to the whole head on this HDC
+
+    ;--- The following settings specific to head sides A & B on PCC1:HDC1:Head1.
+    ;--- Note that these settings override those above in  [HeadDriver1:1] section.
+    [Head1:1]
+    WF_VScale_Coeff= 1.0, 1.1, 0.95, 0.98       ;-- WF scaling coefficients for ASIC1..ASIC4 correspondingly
+    WF_VScale_Coeff_ComA = 0.95, 1.2, 0.99, 1.0 ;-- ComA WF scaling coefficients for ASIC1..ASIC4 correspondingly
+
+
+
+
+

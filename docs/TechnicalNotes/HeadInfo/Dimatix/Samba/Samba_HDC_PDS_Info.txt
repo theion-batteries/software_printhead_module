@@ -1,0 +1,34 @@
+=================================================================================================
+    Some information regarding Samba HDC/PDS differences
+=================================================================================================
+
+--- PCC+HDC configuration.
+
+    PCC-E drives upto 8 HDC-SB boards. Each HDC-SB board drives one head. Ecah head has 2 "halves" or JAs in
+    Meteor terminology.
+
+    PE-addressing [PCC, HDC, Head, JA] for this scenario looks as follows: 
+
+        [PCC, HDC, 1, 1]    Head1, JA1 on a specific PCC/HDC
+        [PCC, HDC, 1, 2]    Head1, JA2 on a specific PCC/HDC
+
+    Note that 'Head' index is always 1, because there is only one head per HDC    
+
+
+
+--- PCC-Z + HMB-2SB => PDS-2SBZ configuration.
+
+    PCC-Z plugs into HMB-2SB board and they both make PDS-2SBZ unit that drives 2 heads. 
+    From Meteor system point of view  HMB-2SB is just 2 "HDCs" on the same PCB, each HDC still drives one Samba head.
+    So, in theory, this configuration is not different from the case of PCC-E driving only 2 HDC-SB boards.   
+
+    PE-addressing [PCC, HDC, Head, JA] for this scenario looks as follows: 
+
+        [PCC, 1, 1, 1]    Head1, JA1 on a specific PCC, "HDC1"
+        [PCC, 1, 1, 2]    Head1, JA2 on a specific PCC, "HDC1"
+
+        [PCC, 2, 1, 1]    Head1, JA1 on a specific PCC, "HDC2"
+        [PCC, 2, 1, 2]    Head1, JA2 on a specific PCC, "HDC2"
+
+    Note that 'Head' index is always 1, because there is only one head per built-in "HDC" on HMB-2SB.
+    Built-in "HDC"  index is either 1 or 2.

@@ -1,0 +1,89 @@
+=================================================================================================
+    Some information regarding  "Pixel mode"  and "meniscus activation" for some Kyocera heads 
+=================================================================================================
+
+Those featuires are supported by those quite old head types only:
+
+Head Type   Config name
+
+HT_KJ4      "KJ4" 
+HT_K1200    "K1200"
+HT_K150     "K150"
+HT_K300     "K300"
+HT_K600     "K600"
+
+-------------------------------------------------------------------------------------------------
+---- Pixel mode
+-------------------------------------------------------------------------------------------------
+
+This is a kind of a limited-functionality palette (doesn't allow mapping any grey level value to any pixel value).
+This "mode" of "palete mapping" is specified by just one number and its meaning also depends on the selected BPP value.
+Other (newer) Kyocera head types may have a full palette functionality implemented, see the corresponding TechNotes for
+the particular head type.
+
+In Meteor Config file for these head type "Pixel mode" can be set in [DefaultParameterValues], [ControllerX]
+sections, e.g:
+
+    [Controller1]
+    PixelMode = 2
+
+It is also can be set as a CPEX_PixelMode parameter via PiSetParamEx() API.
+                    
+
+
+-- Pixel mode for 4BPP
+
+
+PixelMode |  Pixel data=0 | Pixel data=1 | Pixel data=2 | Pixel data=3 | Pixel data=4| Pixel data=5| Pixel data=6| Pixel data=7
+----------+---------------+--------------+--------------+--------------+-------------+-------------+-------------+---------------
+    0     |  No drop      | Drop Size 1  | Drop Size 2  | Drop Size 3  | Drop Size 4 | Drop Size 4 | Drop Size 4 | Drop Size 4   
+          |               |              |              |              |             |             |             |
+    4     |  Drop Size 6  | Drop Size 1  | Drop Size 2  | Drop Size 3  | Drop Size 4 | Drop Size 4 | Drop Size 4 | Drop Size 4   
+          |  (Meniscus)   |              |              |              |             |             |             |
+          |               |              |              |              |             |             |             |
+    5     |  No drop      | Drop Size 1  | Drop Size 2  | Drop Size 3  | Drop Size 4 | Drop Size 5 | Drop Size 6 | Drop Size 7   
+          |               |              |              |              |             |             | (Meniscus)  |
+          |               |              |              |              |             |             |             |
+    6     |  Drop Size 6  | Drop Size 1  | Drop Size 2  | Drop Size 5  | Drop Size 4 | Drop Size 5 | Drop Size 6 | Drop Size 7   
+          |  (Meniscus)   |              |              |              |             |             | (Meniscus)  |
+
+
+
+-- Pixel mode for 2BPP
+
+PixelMode |  Pixel data = 0     | Pixel data = 1 | Pixel data = 2 | Pixel data = 3
+----------+---------------------+----------------+----------------+------------------
+    0     |  No drop            | Drop Size 1    | Drop Size 2    | Drop Size 3
+    1     |  No drop            | Drop Size 1    | Drop Size 2    | Drop Size 4
+    2     |  No drop            | Drop Size 2    | Drop Size 3    | Drop Size 4
+    3     |  No drop            | Drop Size 1    | Drop Size 3    | Drop Size 4
+    4     |  Meniscus Activation| Drop Size 1    | Drop Size 2    | Drop Size 3
+    5     |  Meniscus Activation| Drop Size 1    | Drop Size 2    | Drop Size 4
+    6     |  Meniscus Activation| Drop Size 2    | Drop Size 3    | Drop Size 4
+    7     |  Meniscus Activation| Drop Size 1    | Drop Size 3    | Drop Size 4
+
+
+-- Pixel mode for 1BPP
+
+PixelMode | Pixel data = 0      |  Pixel data = 1
+----------+---------------------|-------------------------
+    0     | No Drop             + Drop Size 1
+    1     | No Drop             | Drop Size 2
+    2     | No Drop             | Drop Size 3
+    3     | No Drop             | Drop Size 4
+    4     | Meniscus Activation | Drop Size 1
+    5     | Meniscus Activation | Drop Size 2
+    6     | Meniscus Activation | Drop Size 3
+    7     | Meniscus Activation | Drop Size 4
+                                
+
+-------------------------------------------------------------------------------------------------
+---- Meniscus activation
+-------------------------------------------------------------------------------------------------
+
+Sending SIG_TOGGLE_MENISCUS allows on the fly switching on and off of meniscus activation. 
+Switching between pixel modes that have different drop sizes is not allowed.
+
+
+
+

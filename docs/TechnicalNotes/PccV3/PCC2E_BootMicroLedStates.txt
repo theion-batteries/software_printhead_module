@@ -1,0 +1,23 @@
+PccV3 Boot Microcontroller LED states
+-------------------------------------
+
+(1) (0) means green and orange flashing alternately
+(1) (1) means green and orange flashing simultaneously
+
+|    GREEN (D9)     |     ORANGE (D10)      |   
+|                   |                       |
+---------------------------------------------
+
+| Slow flash        | Off                   | All OK
+| Slow flash(1)     | Slow flash(0)         | External flash RBF image not yet programmed
+| Solid on          | Quick flash           | Programming FPGA
+
+| Quick flash       | On                    | Under voltage triggered
+| Off               | Quick flash           | FPGA over temperature shutdown
+| Quick flash(1)    | Quick flash(1)        | PLL lock error
+| Quick flash(1)    | Quick flash(0)        | External flash comms fail
+| Quick flash       | Quick flash 1 in 4    | External flash read/write timeout
+| Quick flash       | Quick flash 2 in 4    | Power good fault (e.g. a PGD signal high when it should be low)    
+| Quick flash       | Quick flash 3 in 4    | External flash write enable fail
+
+| Dimly on          | Dimly on              | Boot micro firmware is not programmed, or the micro is held in reset

@@ -1,0 +1,17 @@
+=================================================================================================
+Some information on how to send images to a different colour planes using TestApp
+=================================================================================================
+
+This is not a really trivial task, as TestApp has never been designed as a working tool. But it is good for testing.
+
+Steps required:
+
+1.  find out how many colour planes you are going to use. Take a look at your config file, [Planes] section.
+2.  "Job" tab, "Job in progress" pane, tick on "Multiple planes" checkbox.
+3.  Goto "Planes" tab, enter correct number of planes you want to use in "Plane count" box below.
+3.1 Enter file names you are going to assign to the selected planes in "Plane[..]" "File[..]" controls.
+    These settings are persistent and saved in Windows registry.
+
+4.  return to "Job" tab, hit "Send FDoc" button, all images will be sent to PrintEngine.
+
+

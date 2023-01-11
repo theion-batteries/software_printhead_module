@@ -1,0 +1,27 @@
+=================================================================================================
+    
+Some information on the waveform files for Dimatix GMA heads.
+
+=================================================================================================
+
+Currently GMA and Samba waveforms seems to be identical.
+For waveforms parameters, format description etc. see information in the "Samba" directory
+
+
+
+=================================================================================================
+Getting real head / amplifiers temperatures
+=================================================================================================
+The real (measured) values of head / amplifiers temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status
+listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    Head temperature
+
+--- Waveform amplifiers temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature2    Head amplifier temperature
+
+

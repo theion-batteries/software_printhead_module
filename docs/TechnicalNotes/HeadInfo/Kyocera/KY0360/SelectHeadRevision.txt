@@ -1,0 +1,45 @@
+
+=================================================================================================
+    Some information regarding selecting Kyocera KY0360 head revision
+=================================================================================================
+
+As far as we aware currently there are 2 main KY0360 head revisions:
+
+    * "Standard", older type 
+    * "Type G",   newer type 
+
+
+These "Standard" and "TypeG" heads have different hardware interfaces and PCC FPGA should know which head it is 
+dealing with.
+
+So, there is a config file parameter "HeadSubType" that can specify revision of the head connected to 
+specific PCC:HDC. 
+
+This parameter can have 2 values:
+
+    0 for "older" head revision (default value)
+    1 for head "Type G".
+
+    If all heads are older type, then this parameter can be omitted.
+
+"HeadSubType" parameter can be placed in following sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+    Configuration example:
+
+    [DefaultParameterValues]
+    ;-- global default value for whole system    
+    HeadSubType = 0 ;-- 0 for "Standard" head revision, 1 for "Type G" revision 
+
+    ;-- PCC:1, here should be a list of 8 values that override parameter for every head on PCC:1
+    [Controller1]
+    HeadSubType = 0,0,0,0 1,1,1,1 ;-- Head1..Head4 are "Standard", Head5..Head8 are "TypeG"
+   
+
+    ;-- settings for PCC:1, HDC:1
+    [HeadDriver1:1]
+    HeadSubType = 1 ;-- PCC:1, HDC:1, Head:1 is "TypeG" (overrides value from [Controller1])
+
+
+It is also a good idea to check Meteor log file that should contain line like this:
+"# using KY0360 'Type G' head rev. for:[PCC:1, HDC:1]"
+

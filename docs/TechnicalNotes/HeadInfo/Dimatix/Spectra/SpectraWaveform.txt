@@ -1,0 +1,132 @@
+=================================================================================================
+Some information regarding waveform for Dimatic Spectra head
+=================================================================================================
+
+
+Spectra head requires a very simple trapesoidal waveform made of one pulse only.
+Like this:
+
+                      __
+ PulseVoltage --->   /  \
+                    /    \
+                   /      \
+                  /        \
+ 0V --->    -----/          \------
+
+
+It can use only single pulse waveform, so, it can print in 1BPP only.
+Because of that there is no waveform file as such, and the Working/Tickling pulse 
+parameters simply specified in a config file [Spectra] section.
+
+Example of working/tickling pulse definition:
+
+    [Spectra]
+    HeadVoltage         = 96     ; Default fire-pulse voltage
+    PulseWidth          = 10.5   ; Pulse width in us
+    RampUp              = 2.5    ; Ramp-up time in us
+    RampDown            = 4.0    ; Ramp-down time in us
+    TickleVoltage       = 55.0   ; voltage for tickle pulse
+
+
+Tickling pulse uses the same RampUp/RampDown timings as the working one, but reduced voltage.
+
+Tickling can be enabled by setting "Tickle = 1" in a [System] section.
+And the tickling frequency can be set by "TickleFreqHz" key in a [System] section, default value is 8000Hz.
+
+
+-------------------------------------------------------------------
+--- Adjusting waveform parameters
+
+Currently it is not possible to assign voltages/timings to every head's JA individually using the config file.
+There are though two ways to change head waveform pulse settings:
+    1. Legacy way with sending CCP_HEAD_**** parameters to PrintEngine (not reaally recommended)
+    2. Newer way with using PiSetParamEx() API. It also allows reading those rettings.
+
+
+-------------------
+--- Legacy way of adjusting waveform parameters
+
+In this case values in config file provide "base" settings, and PiSetParam() API is used to "trim" these values.
+Following parameters can be used to adjust head/JA waveform:
+
+CCP_HEAD_JA1_VOLTAGE1
+CCP_HEAD_JA1_VOLTAGE2
+CCP_HEAD_JA1_PULSEWIDTH
+CCP_HEAD_JA1_RAMPUP
+CCP_HEAD_JA1_RAMPDN
+CCP_HEAD_JA1_TICKLE_VOLTAGE
+
+CCP_HEAD_JA2_VOLTAGE1
+CCP_HEAD_JA2_VOLTAGE2
+CCP_HEAD_JA2_PULSEWIDTH
+CCP_HEAD_JA2_RAMPUP
+CCP_HEAD_JA2_RAMPDN
+CCP_HEAD_JA2_TICKLE_VOLTAGE
+
+These parameter values (trims) are added to the "base" settings from the config file.
+Note that voltage trims are in 0.1v units, and the time values are in ns.
+For more details see "Meteor.cs" or "Meteor.h" file.
+
+-------------------
+--- Newer way of adjusting waveform parameters
+
+Keep in mind Spectra HDC/Head configuration: HDC drives 1 head, the head has 2 JAs.
+Also, every JA seems to have 2 independent pulses. Their amplitudes are the same by default, byt can be made
+different.
+
+Now Spectra head WF parameters are mapped to some ConfigEngine parameters, as follows:
+
+    KPEX_HeadVRef_U1   -> "Head voltage 1"   (WF pulse amplitude for part1 of every head JA)
+    KPEX_HeadVRef_U2   -> "Head voltage 2"   (WF pulse amplitude for part2 of every head JA)
+    KPEX_VAAP          -> "Tickling voltage" (WF pulse amplitude for tickling. Applies to whole JA)
+
+
+    KPEX_PulseWidth    -> "WF pulse width, us"   
+    KPEX_PulseRampUp   -> "WF pulse RampUp time, us"
+    KPEX_PulseRampDown -> "WF pulse RampDown time, us" 
+
+    All voltage values in Volts, valid voltage range:[1.0, 125.0] volts.
+    All time values in microseconds valid range is [1.0, 102.0] us.
+    
+Note that using  KPEX_*** parameters will set ABSOLUTE values, not default value + adjustment as with 
+using CCP_*** ones. 
+So, don't mix using "legacy" and "new" ways of setting parameters, it will lead to confusion.
+
+
+-- WF parameters validation
+
+The max. voltage Spectra HDC can achieve is around 125.4V. So, that's the max. WF voltage. Min. WF voltage is 0v.
+The result WF pulse voltage is made of "Base voltage" (value from config file) + "Voltage Trim" 
+(from  CCP_* parameters). As soon as "Base voltage" + "Voltage Trim" is less than 125V, it is fine.
+When changing CCP_* voltage parameter, its value is added to the "Base voltage" from config file and the result
+is checked. 
+So, the valid "trim" values for CCP_HEAD_JA*_VOLTAGE* and CCP_HEAD_JA*_TICKLE_VOLTAGE depend of the "base" voltages
+in the config file.
+
+
+WF pulse slew rate for ramping up and down has limitations as well.
+The min. slew rate for pulse ramp up/down is 1.25 V/us; max. slew rate is 318 V/us. Note that this is 
+software limits, the real hardware may not be able to achieve extreme slew rates.
+
+Spectra head and HDC hardware also limit WF pulse ramp up/ramp down time: its min. malue should be >= 1 us.
+
+
+
+
+-- WF parameters logging
+
+It may be useful to see what are the actual WF parameters are.
+For this, enable log category "WaveformData"
+And you can find lines like thios in Meteor log: 
+
+ WF for[PCC:1,HDC:1,Head:1,JA:1] V1:96.0, V2:96.0, VTickle:70.3, RampUp:2.50us, RampDown:4.00us
+ WF for[PCC:1,HDC:1,Head:1,JA:2] V1:96.0, V2:96.0, VTickle:39.7, RampUp:2.50us, RampDown:4.00us
+
+
+
+
+
+
+
+
+

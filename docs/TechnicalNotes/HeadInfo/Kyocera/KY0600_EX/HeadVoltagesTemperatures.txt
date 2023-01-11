@@ -1,0 +1,116 @@
+=================================================================================================
+    Some information regarding Kyocera KY0600_EX head voltages / temperatures  
+=================================================================================================
+
+
+Firsrt of all, on head power up all head original Voltages and some other settings are read and can be
+retrieved by user application as a part of "Head EEPROM data", see "HeadEepromData.txt".
+This is done because any values written to the head, like voltages, overwrite existing values in
+head EEPROM and become permanent.
+So, it might be a good idea to store original values somewhere before changing them.
+
+
+=================================================================================================
+--- Head voltages configuration:
+
+In the simplest case no voltage parameters are specified in Meteor congig file at all.
+In this case no voltage related data is sent to the head and it uses whatever is in its EEPROM.
+
+There are several parameters that can be used for specifying head voltages.
+
+------- "VoltageSetting" (head commands 0x15/0x95)
+
+This parameter controls head driving voltage by sending command to the head to set up its internal voltage regulator.
+This value is also read from the head on powering on and displayed in Monitor and as an EEPROM data item.
+
+To specify this "VoltageSetting" following parameter is used, it can be set either in Meteor config file or
+by using PiSetParamEx() API.
+
+name:HeadVoltage,  id:KPEX_HeadVoltage, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+    "HeadVoltage" value can be:
+
+        0.0v or "not set". In this case this particular voltage won't be sent to the head and thehead will use
+                           the value which is written to its EEPROM.
+
+        22.0..28.0 volts value
+
+
+------- "HeadVoltageAdj" (head commands 0x34/0xB4)
+
+This parameter specifies whole head driving voltage adjustment in the range [-3.2..+3.2] volts. Default value is 0.0V.
+
+There is also a special value: 99 it is far outside the valid range and means "not set". If the value is "not set",
+then PrintEngine will not sent any commands to the head to set "HeadVoltageAdj". 
+
+
+name:HeadVoltageAdj,id:KPEX_HeadVoltageAdj, valid range:[-3.2..+3.2], def:0.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+------- Specifying Head voltage parameters in a config file:
+
+Specifying "HeadVoltage" in [DefaultParameterValues] section sets them for the whole system, e.g:
+
+    ;---Global system default settings:
+    [DefaultParameterValues]
+    HeadVoltage     = 23.3  ;-- value for ALL heads in the system
+    HeadVoltageAdj  = 0.0   ;-- value for ALL heads in the system
+
+
+Specifying parameter in [ControllerX] and/or in [HeadDriverX:Y] sections overrides values from [DefaultParameterValues]
+and allows setting parameters for individual heads.
+
+    [Controller1]   ;-- these values override ones from [DefaultParameterValues] section 
+    HeadVoltage    = 23.8, 25.7  ;-- values for Head1 and 2 on PDC1 
+    HeadVoltageAdj = 0.5,  -0.3  ;-- values for Head1 and 2 on PDC1 
+    
+
+    [HeadDriver1:1] ;-- these values override ones from [Controller1] section
+    HeadVoltage     = 25.0  ;-- value for Head1 on PDC1
+    HeadVoltageAdj = -1.2   ;-- value for Head1 on PDC1
+
+
+
+=================================================================================================
+--- Setting Head temperature.
+
+    It can be set in the config file by "HeadTargetTemperature" key, which can be placed into [DefaultParameterValues], 
+    [ControllerX], [HeadDriverX:Y] sections (see above).
+    This parameter specifies head target temperature in degrees C. It should be in a range [15.0, 45.0]C, 
+    and the default value is 0, which means: "use the value stored in the head EEPROM"
+
+
+
+=================================================================================================
+Getting real head voltages / temperatures
+=================================================================================================
+The real (measured) values of heads voltages, temperatures/ etc. are displayed in "Monitor" program, 
+"Status" tab, HDC/Head status listbox.
+There is a limted number of parameters that can be read from this type of head. 
+The most useful ones are: 
+    "heater seting value" or target temperature
+    "Heater" temperature, the head real temperature.
+
+
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+All voltages are 10x scaled; all temperatures are 10x scaled; Current is in mA.
+
+    TAppHeadStatus::Temperature1 -> head target temperature.
+    TAppHeadStatus::Temperature2 -> head current (measured) temperature.
+    TAppHeadStatus::HeadVoltage  -> "HeadVoltage" voltage, 10x scaled
+
+    -- this information is from PDC parameters measurements and common for both heads --
+    TAppHeadStatus::Temperature3    ->  PSU1 Temperature, 10x scaled
+    TAppHeadStatus::Temperature4    ->  PSU2 Temperature, 10x scaled
+    TAppHeadStatus::AbsHeadVoltage  ->  Vin Voltage, 10x scaled
+    TAppHeadStatus::Voltages[0]     ->  head1 VDrive, 10x scaled
+    TAppHeadStatus::Voltages[1]     ->  head2 VDrive, 10x scaled
+    TAppHeadStatus::Voltages[2]     ->  Head1 VDrive current, ma    
+    TAppHeadStatus::Voltages[3]     ->  Head2 VDrive current, ma
+
+
+
+

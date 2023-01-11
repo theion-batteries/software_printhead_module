@@ -1,0 +1,77 @@
+=================================================================================================
+    Some information regarding temperature control for Kyocera KJ4 head driven by  PDC-2KA600
+=================================================================================================
+
+
+Hardware configuration:
+    PDC-2KA600 drives two KJ4 heads. Default config file is: "DefaultKA600.cfg"
+
+
+Notes on PCC/HDC/Head configuration:
+    Basically, PDC-2KA600 is a usual PCC that drives two HDCs, each HDC drives one head. The only thing that
+    PCC+HDCs are located on the same PCB. So, heads addressing looks as follows:
+
+        Head1 on PDC3 ->  PCC:3, HDC:1, Head:1
+        Head2 on PDC3 ->  PCC:3, HDC:2, Head:1            
+    
+    Note that head index is always 1 (HDC drives one head only), but HDC index specifies which "head" is
+    being addressed.
+
+
+
+-----------------------------------------------------------------------------------
+--- setting up temperature control
+
+There is config file parameter that can be used to set up temperature control:
+    
+    [KJ4]
+    HeadTemperature = 35.0   ; target head temperature (C) !! This is a legacy parameter, see below.
+
+
+--- Legacy (not recommended any longer) way of setting head target temperatures.
+Previously the only setting was "HeadTemperature" in [KJ4] section. It was applied to the WHOLE system, 
+addressing all PDCs/Heads. To set head target temperature on HDC basis, it was required to use PiSetParam() API and
+CCP_HEAD_TEMP parameter. 
+Using this parameters is not recommended, because there is a better way to achieve this:
+
+
+--- Modern way of setting Head/Aux target temperatures.
+
+There is now ConfigEngine parameter that allowa specifying individual heads' target temperatures:
+
+KPEX_TargetTemp, id:CPEX_TargetTemp, valid range:[0.0..45.0], def:0.0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+
+This parameter can be used down to HDC level, allowing setting target temperatures for individual HDCs/Heads. For example:
+
+    [DefaultParameterValues]      ;-- global default values for the WHOLE system
+    HeadTargetTemperature = 22.3  ;-- target head temperature for ALL heads in the ssytem
+
+
+    [Controller1]  ;-- settings specific to the head on PCC:1, (override settings from [DefaultParameterValues])
+    HeadTargetTemperature = 22.7, 25.4   ;-- head target temperatures for HDC:1(head1) and HDC:2(head2) on PDC:1
+
+
+    [HeadDriver1:1] ;-- settings specific to the head on PCC:1, HDC:4 (override settings from Controller1)
+    HeadTargetTemperature = 32.7  ;-- target head temperature for the head on PDC:1, HDC:1 (head1)
+
+    [HeadDriver1:2] ;-- settings specific to the head on PCC:1, HDC:4 (override settings from Controller1)
+    HeadTargetTemperature = 35.4  ;-- target head temperature for the head on PDC:1, HDC:2 (head2)
+
+
+
+Using old "HeadTemperature" and new parameters in the config file is not recommended, this may lead to confusion.
+
+
+
+
+------------------ Getting real heater temperatures
+
+The real (measured) values of heater temperatures are displayed in "Monitor" program, "Status" tab, HDC/Head status listbox.
+User application can also obtain these values as a part of TAppHeadStatus structure via PiGetHeadStatus() or PiGetStatusEx() API.
+
+Fields of TAppHeadStatus structure map to the real objects data as follows:
+
+--- Head temperature is in degrees C multipiled by 10
+TAppHeadStatus::Temperature1    current measured head themperature
+

@@ -1,0 +1,71 @@
+=================================================================================================
+    Some information regarding different variants of Konica Minolta KM1024A family heads
+=================================================================================================
+
+There are several variants of KM1024A head ("sub-types" in Meteor terminology). They have slightly different
+physical properties and therefore Meteor system needs to know about it.
+
+There is a parameter in a config file that can specify which sub-type is used:
+
+---
+name:HeadSubType, id:CPEX_HeadSubType, valid range:[0,1], def:0, scope:[DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+
+This parameter allows selection of "Head sub-type". Allowed values:
+        * 0 (default) selects KM1024A-LHG variant
+        * 1 selects  KM1024A-SHE  variant, which has different nozzle rows positions.
+        * 2 selects  KM1024A-SHE-HR variant that has different thermal properties
+
+
+This parameter can be specified  in [DefaultParameterValues], which affects whole system, and in
+[ControllerX], [HeadDriverX:Y] sections. In the later case it is possible to configure HDCs on PCC:X drive different head sub-types.
+
+E.g. following example:
+        [Controller1]
+        HeadSubType =  1,1,0,0,0,0,0,0 
+
+Will make PrintEngine use SHE variant on PCC1:HDC1 and PCC1:HDC2, while all other HDCs on PCC1 will use LHG variants.
+
+This example specifies SHE variant on PCC1:HDC1 only.
+
+        [HeadDriver1:1]
+        HeadSubType = 1     ; 0(default) for LHG variant, and 1 for SHE variant
+
+
+
+--- brief KM1024A sub-types description:
+
+sub-type 0: KM1024A-LHG
+    Nozzle rows positions:[0,12,36,48] pixels at native 360 DPI.
+    Max. operating temperature 55C
+
+
+sub-type 1: KM1024A-SHE
+    Nozzle rows positions:[0,12,28,40] pixels at native 360 DPI.
+    Max. operating temperature 55C
+    
+sub-type 2: KM1024A-SHE-HR "High temperature" variant of KM1024A-SHE.
+    Nozzle rows positions:[0,12,28,40] pixels at native 360 DPI.
+    Max. operating temperature 83C. Also has different head thermistor value.
+
+
+=================================================================================================
+!! Important !!
+
+Proper support for the KM1024A-SHE-HR "High temperature" varian is implemented only on HDC RevC and later.
+Before that the HDC would have to be modified to correctly support "High temperature" head variant.
+The problem is "High temperature" head variant has 100K thermistor instead 10K for the other head sub-types.
+So, if you are trying to use KM1024A-SHE-HR and see weird head temperature, then you need to check if 
+you are using modified pre-RevC HDC or HDC RevC and later and the hea sub-type is set correctly.
+
+And vice versa, using modified pre-RevC HDC and connecting "low temperature" head to it will result in weird 
+head temperature readings.
+
+
+
+
+
+
+
+
+
+

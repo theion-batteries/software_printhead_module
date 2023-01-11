@@ -1,0 +1,30 @@
+
+=================================================================================================
+    Getting static KY0360 head information
+=================================================================================================
+
+Static information, like head serial number etc. is published as EEPROM data
+and can be obtainned in a form of JSON file via PiGetEepromData() API.
+
+This information can also be obtained via TestApp. "Status" tab -> "Get Head EEPROM data" button.
+Note that correct PCC/HDC numbers needs to be specified in the dropdown lists on the left.
+
+ 
+an example of the JSON output from TestApp:
+ 
+ {
+    "FWversion" : "2016/11/07-02",
+    "NumberofJets" : "185797",     // this is, basically, "Number of nozzles fires", read by 0x02 command
+    "SerialNumber" : "170300-01",  // head S/N
+    "VDD2_A1" : "26.000",
+    "VDD2_A2" : "26.000",
+    "VDD2_A3" : "26.000",
+    "VDD2_B1" : "26.000",
+    "VDD2_B2" : "26.000",
+    "VDD2_B3" : "26.000"
+ }
+
+
+
+
+More detailed information can be found in TechNotes here: TechnicalNotes\TestApp\Head_EEPROM.txt

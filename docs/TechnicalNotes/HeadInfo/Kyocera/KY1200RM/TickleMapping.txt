@@ -1,0 +1,63 @@
+=================================================================================================
+    Some information about "Tickle mapping" feature for KY1200RM  head type.
+=================================================================================================
+
+Details of this feature can be found in "Function of Fire Slot Conversion" Kyocera document.
+
+Briefly, KY1200RM head can internally map any grey level value to another grey level value as a function of print
+cycle number and some other parameters. 
+For example, as the documentation shows, the head maps Fire0 (GL0, WF0) data to Fire11 (GL11, WF11) for every second
+print cycle. I.e performs a sort of "tickling while printing". This feature is turned ON by default.
+
+In Meteor terms it is called "Tickle Mapping" and this functionality is controlled by 2 parameters (two 32-bit values)
+that are sent to the head on powering it on.
+
+These (optional) parameters can be specified in Meteor config file as "TickleMapper1" and "TickleMapper2" keys, in 
+sections: [DefaultParameterValues], [HeadDriverX].
+If these parameters are not set, nothing is sent to Print Head and head uses its default values.
+
+On head power ON these values are read from the head and sent to PrintEngne as "Head EEPROM data", and can be
+obtained in a usual way. For example:
+
+    {
+    "#HeadType" : "HT_KY1200RM",
+    "#InfoType" : "Head EEPROM Data",
+    "00:00:00:00" : {
+    "#DataValid" : true,
+
+    "TickleMapper_1" : "0x000c01b0", <---- Mapping value 1
+    "TickleMapper_2" : "0x00000000", <---- Mapping value 2
+        
+    "U1_Fire0" : "VRef:20.00v, VGain:1.0000"
+    .....
+    }  
+
+
+"TickleMapper_1" value "0x000c01b0" means that Fire00 will be substituted with Fire11 for every second print cycle.
+For the detailed explanation please refer to the original documentation.
+
+
+In order to change these values and use some other FireX->FireY mapping it is necessary to specify 
+TickleMapper_1 and/or TickleMapper_2  parameter values in a config file in a hex format.
+ 
+
+--- Example of Meteor config file settings:
+
+    [DefaultParameterValues]
+    TickleMapper1 = 0x0c00B0 ;-- disable Fire0 to Fire11 mapping for the whole system
+    ;TickleMapper2 = 0x00    ;-- commented out, won't be sent to the head.
+
+
+    ;---Settings specific for PCC1:HDC1. Note that there is one head per HDC: 
+    [HeadDriver1]
+    TickleMapper1 = 0x0c01A0 ;-- enable Fire0 to Fire10 mapping for PDC1
+
+
+If everything is OK, then on head power ON event log will contain something like this:
+
+    "Setting TickleMapping value1 for[PCC:1,HDC:1]:0x000c00b0"
+
+And head EEPROM data will reflect new mapping values.
+
+
+

@@ -1,0 +1,158 @@
+=================================================================================================
+    Some information regarding ASICs ("chips"/print modules) stitching for Epson S3200 head
+=================================================================================================
+
+
+Epson S3200 head consists of 4 print modules ("chips") in Epson terminology.
+They will be referred as "ASICs" here. So, "chip1" corresponds to "ASIC1" and so on.
+Each ASIC drives 800 nozzles and these ASICs have overlapping region of 120 nozzles between them.
+
+So, overlapping ASICs are: [ASIC1, ASIC2], [ASIC2, ASIC3], [ASIC3, ASIC4]. Thus, there are 3 
+overlapping regions, 120 nozzles each.
+
+
+Here is the picture showing ASIC1 and ASIC2 overlapping: 
+The same applies for [ASIC2, ASIC3], [ASIC3, ASIC4] pairs.
+
+
+                      ASIC1
+                      +---+
+                      | O |      swath Nz 0
+                      | O |      swath Nz 1
+                      | . |
+              ASIC2   | . |      ....
+              +---+   | . |
+          /---- X ----- O |      swath Nz 680
+         /    | X |   | O |      swath Nz 681
+  ASIC1&2     | X |   | O |      swath Nz 682
+  overlapping | X |   | O |      swath Nz 683
+  region,     | . |   | . |
+  120 nozzles | . |   | . |      .....
+         \    | . |   | . |
+          \---- X ----- O |      swath Nz 799
+              | X |   |___|
+              | X |
+              | . |
+              | . |
+              | X |
+              |___|
+
+
+Neither print head itself, nor Meteor hardware cares about ASIC stitching, so, if we just sent print data to all 
+ASICs, pixels in overlapping regions will be printed twice, which, probably, is not a very good idea.
+To deal with that problem PrintEngine applies "stitching masks" for the ASIC overlapping regions. 
+In the simplest default case the algorithm is: "every even nozzle in the overlapping region belongs to one ASIC, 
+every odd nozzle - to another." So, for the picture above ASC1&2 stitching region will be printed like:
+
+     O
+     X      Where:   'O'  - nozzles that belong to ASIC1 
+     O               'X'  - nozzles that belong to ASIC2 
+     X
+     O
+     X
+     .
+     .
+     X
+
+
+This should be enough for the most of the cases, it is set up by default and works straight from the box.
+
+---
+On the other hand, if some nozzles in ASIC stitching region becomes blocked, and this nozzle is selected
+to print, then the pixels along the swath won't be printed at all. In this case it is possible to change the 
+stitching mask to disable this particular nozzle in one ASIC and enable in another ASIC that is stitched with 
+the first one.
+
+This can be done by using EpsonS-series specific "ASIC stitching file" that describes which nozzles for 
+which ASICs in the stitching region will print or not.
+Setting up this file is very similar to a standard waveform file:
+
+    * it is possible to specify upto 100 such files in the config file, e.g:
+             [EPSON_S3200]
+             AsicStitchFile1 = "Waveform\Epson\S3200\TestS3200_AsicStitch.txt"
+             AsicStitchFile2 = "Waveform\Epson\S3200\SomeOther_AsicStitch.txt"
+
+    * Then parameter "AsicStitchFileIdx" selects this "stitch file" index for desired set of System/PCC/HDC
+      it can be places in sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y]
+      By default value of this parameter is 0, which means "use default hardcoded stitching pattern".
+  
+    * there is an example of such file: "Waveform\Epson\S3200\TestS3200_AsicStitch.txt" 
+      It contains all default values.
+
+
+--- ASIC stitching file format:
+
+For ES3200 head it must contain 3 sections: [StitchMask_ASIC12],[StitchMask_ASIC23],[StitchMask_ASIC34], which
+define data for the stitching regions: [ASIC1, ASIC2], [ASIC2, ASIC3], [ASIC3, ASIC4] accordingly.
+ 
+Every section must contain 2 keys: "TopAsicMask" and "BotAsicMask" that correspond to "Top" and "Bottom" ASICs 
+withn the stitching region.
+Key value is a string of 8-bit hex numbers. These dumps must contain 15 bytes, which is  120 bits for 120 nozzles 
+in the rerion where "top" and "bottom" ASICs overlap.
+So, the key value defines a 120-bit vector. For the bits set to '1' in this vector coresponding nozzle in the
+corresponding ASIC will print data; for '0' bit it will not print. 
+
+The leftmost bit in this vector corresponds to the top nozzle in the stitching band (or topmost nozzle of the 
+stitched "bottom" ASIC).
+
+For example, default values:
+
+    [StitchMask_ASIC12]
+    TopAsicMask = 0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55,0x55
+    BotAsicMask = 0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa,0xaa
+
+will result in:
+
+    ASIC1 Mask = 010101......01
+    ASIC2 Mask = 101010......10
+
+which in turn is the same as the default hardcoded pattern.
+
+Note that all 4 combinations of Top/Bottom ASIC bits in bitmasks are valid:
+
+
+                        bit values in "TopAsicMask" and "BotAsicMask"
+                        _____________________________________________
+                       |               |              |              |
+                       v               v              v              v
+    Top ASIC nozzle:   0 <-no print,   0 <-no print,  1<-prints,     1<-prints
+ Bottom ASIC nozzle:   0 <-no print,   1 <-prints,    0<-no print,   1<-prints
+
+
+So, it is possible to use "overprint", when stitched pixel is printed twice, by top and bottom ASICs' nozzle.
+
+For example, these masks will cause every pixel in stitch band between ASIC1&ASIC2 be printed twice:
+
+    [StitchMask_ASIC12]
+    TopAsicMask = 0xFF,0xFF,.....0xFF
+    BotAsicMask = 0xFF,0xFF,.....0xFF
+
+
+
+
+
+--- Notes:
+
+    - it is possible to use SimPrint to see how ASIC stitching masks are applied. For Epson S series heads
+      there is "Show Epson ASICs" checkbox that allows displaying ASICs within the head with different colour.
+    
+    - !Important: This head is very wide in X-direction, about 360 pixels. And the slightest head misalignments,
+      especilally Yaw (head leading edge is not ideally perpendicular to the head/media motion) can lead
+      to the problems with pixels being out of order in Y-direction. This can be very well visible on diagonal 
+      lines in ASIC stitching regions
+
+
+
+
+
+
+
+
+
+ 
+                     
+
+                     
+
+
+   

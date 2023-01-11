@@ -1,0 +1,52 @@
+=================================================================================================
+Some information on the waveform files for Epson S800 head family head
+=================================================================================================
+
+Basically, all waveform information for S800 head is absolutely the same as for S3200, because 
+they use the same ASICs. The only difference is that S3200 has 4 ASICs (JAs in Meteor terminology) and 
+S800 uses just one ASIC. So, please refer to S3200 documentation.
+
+
+
+=================================================================================================
+     Hardware configuration:
+=================================================================================================
+    
+    * HDC-ES3200 drives one ES800  head        
+    * ES800 head has 1 "chip" or "ASIC". It is referred as Jetting Assemblies (JAs) by Meteor.
+    * ASIC drives 2 nozzle rows: rowA and rowB (nozzle rows are not related to ComA/ComB waveforms)
+    * Within an ASIC both its nozzle rows: RowA and RowB share the same waveform, but these nozzle rows can have
+      different GreyLevel masks (see below).
+
+
+    * it is possible to specify an optional "tickling waveform" that applies to the head the same way
+      as normal working one, but only when there is no encoder pulses (head is idle). 
+      In order to achieve this a parameter "TickleWaveformFileIdx" can be specified. Its default value 
+      is 0, which means "tickling is disabled". It it has a value of a correct waveform file index, then 
+      corresponding waveform will be used as tickling one.
+
+
+
+    Configuration example:
+
+    [EPSON_S800] ;-- "head" section
+    Waveform1 = "Waveform\Epson\S800\TestS800_Waveform.ComA"  ; working waveform file1 
+    Waveform2 = "Waveform\Epson\S800\TestS800_Waveform2.ComA" ; working waveform file2  
+    Waveform3 = "Waveform\Epson\S800\S800Tickle_Waveform.ComA"; tickling WF
+
+
+    ;--- Global system default settings
+    [DefaultParameterValues]
+    WaveformFileIdx       = 1 ; Global default value
+    TickleWaveformFileIdx = 0 ; Don't use tickling waveforms
+
+
+    [Controller1]             ;--- PCC level (overrides settings in [DefaultParameterValues] section)
+    WaveformFileIdx       = 1 ; All heads on PCC:1 will use working waveforms:  "TestS800_Waveform"
+    TickleWaveformFileIdx = 3 ; All heads on PCC:1 will use tickling waveforms: "S800Tickle_Waveform"   
+
+
+
+
+
+

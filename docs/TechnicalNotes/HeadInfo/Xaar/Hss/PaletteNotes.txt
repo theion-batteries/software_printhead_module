@@ -1,0 +1,40 @@
+=================================================================================================
+    Some information regarding HSS head (Xaar1001-1003) palette files
+=================================================================================================
+
+
+--- Palette (*.plt) file notes:
+    It is an optional file that has the same name as WF file, but *.plt extension. If it is found, PrintEngine
+    will try to read data from it and load to the appropriate palette registers.
+    Palette allows remapping source greyscale values[0..15] (4BPP) to 4-bit head data that is actually printed.
+    Though it in a real life the head/hardware uses 3BPP internally and entries for grey levels 8..15 are 0. 
+
+
+    Default mapping is 1:1, i.e GSLevel0->0, GSlevel1->1 ... GSlevel7->7.
+
+    -- PLT file format:
+    It is very basic, just a list of 16 values separated by commas. No comments, no empty lines allowed.
+
+    An example of such file contents with 1 to 1 mapping (which is not really useful):
+
+    
+    0,1,2,3,4,5,6,7,0,0,0,0,0,0,0,0
+
+
+
+    ---
+    the mapping explained:
+
+    0,1,2,3,4,5,6,7,0,0,0,0,0,0,0,0 <- values for GL8..15 should be 0
+    | ......... | |
+    |           | +------- value for GSLevel 7   
+    |           +--------- value for GSLevel 6
+    |                      ...................
+    +--------------------- value for GSLevel 0
+
+
+    If for some reason the same waveform needs to be associated with different palettes, then it would be necessary to 
+    assign waveform files different names and name *.plt files accordingly.
+
+
+

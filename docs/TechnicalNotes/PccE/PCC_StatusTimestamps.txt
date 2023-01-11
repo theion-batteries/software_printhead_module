@@ -1,0 +1,76 @@
+=================================================================================================
+    
+    Some information regarding timestamps in PCC status packets
+
+=================================================================================================
+
+--- Some information regarding status data in general.
+
+
+Meteor system status information (see TAppStatus/TAppPccStatus/TAppHeadStatus structures) is worked out from
+the PCC boards and PrintEngine states.
+This information can be retrieved by user application by PiGetPccStatus()/PiGetPrnStatus()/PiGetStatusEx() API 
+function calls.
+
+Hardware information from PCC boards is collected every 300ms by default, so, it doesn't make much sense
+for the user applications trying to retrieve it faster than it comes from the hardware.
+
+Meteor status information updates should not be considered as some sort of a real-time just because 
+it wasn't designed for this and all time critical processing is done on FPGA or firmware level.
+
+
+For example, there is no guarantee that status information will be updated every 300 ms, even if it is set up so.
+PCC can be busy doing more important work and sending status can be de-prioritised.
+Moreover, network traffic (e.g. sending large amounts of PrintData) can affect sending status information from
+PCC to PrintEngine. E.g. network stack can queue several status data packets (especially if status update is set up to a faster
+rate) and PrintEngine would receive several status updates once and not separated by nice uniform intervals.
+
+Usually, this shouldn't affect user applications' functionality.
+Alas, the world is still not perfect and some clients try to treat receiving status data as a real-time process and
+make some assumptions about it.
+It may work by chance, but as soon as Meteor has never guaranteed real-time status, it may stop working at any time.
+
+To help with this situations there are some "timestamp" fields in TAppPccStatus structure:
+
+
+    * TAppPccStatus::StatusReadTime   
+        
+        This is the value in OS ticks (usually 1ms, but can be different), which is placed to the 
+        status structure by PrintEngine at the time when status packed is received from PCC.
+        Actually, this value is pretty useless, because PCC/PrintEngine network stack can queue several 
+        status packets and several of them can be received at once.
+         
+
+
+    * TAppPccStatus::FpgaTimestamp_ms
+
+        This value is much more useful, because it is a value of FPGA 1ms timer placed into a status
+        packet along with the other status data by PCC. Thus, this timestamp is not affected by any 
+        traffic and queueing in the network stack and represents precise status packet timestamp with 1ms
+        resolution.
+
+--- Notes:
+
+    * TAppPccStatus::FpgaTimestamp_ms value must be treated as unsigned 32-bit value [0x00000000...0xFFFFFFFF]      
+      If it is treated as a signed 32-bit value, it might at some point "become" negative, which is confusing.
+
+    * absolute value of TAppPccStatus::FpgaTimestamp_ms doesn't make much sense, it is just incremented every 
+      1ms since PCC FPGA start. What actually useful, is a difference between 2 timestamps (e.g previous and 
+      current status packets), this will give a time span (1ms resolution) between those status information
+      updates. It is possible to go further and implement any sort of filtering of this value, like moving 
+      average over several samples etc.  
+
+    * TAppPccStatus::FpgaTimestamp_ms value overflows and rolls over 0xFFFFFFFF->0x00000000 every 49.7 days.
+      Thus, if you don't want to experience some strange glitches in your software, you will need to process
+      this value overflow (indicated by the fact that the next value is less than the previous).        
+
+    * !Important! It is possible that timestamps for 2 consequtive status packets can be the same. It might happen 
+      due to OS running on PCC scheduling algorithms. So, if you don't want to divide by 0, check and process
+      this case correctly.
+
+
+
+
+
+
+

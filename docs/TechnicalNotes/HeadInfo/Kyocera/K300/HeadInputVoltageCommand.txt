@@ -1,0 +1,43 @@
+
+=================================================================================================
+    
+Some information regarding 0x19/0x59 "HeadInput voltage" command for Kj4-0300
+
+=================================================================================================
+
+For some strange reason K300 heads allow setting a parameter that specifies head input voltage.
+It seems that not all heads support this feature. The older models don't seem to recognise such command.
+Thus, this feature is made configurable. If there is no corresponding parameters in a connfig file, then 
+this command won't be sent to the head.
+
+In order to specify "Head input voltage", it is necessary to use "HeadVoltage" key either in [DefaultParameterValues] or 
+in [ControllerX] section (or in both) like in the example below:
+
+
+[DefaultParameterValues] 
+HeadVoltage = 26.5; -- specifies HDC/head input voltage for WHOLE system, all PDCs
+
+
+[Controller1] ; settings specific to each PDC
+
+; must be 2 values that override value from [DefaultParameterValues] 
+HeadVoltage = 29.5, 28 ; HDC/head input voltage for head1 and head2 on PDC1
+
+
+"HeadVoltage" parameter values should be in [26.0, 30.0] volts range.
+
+
+
+--- Debugging.
+It is a good idea to allow logging Kyocera-specific serial commands for the first time to ensure that everything
+works fine and 0x19/0x59 commans sent and processed OK.
+It is done by enabling following logging categories:
+
+[Test]
+LogModules = "KyoceraSequencer|KyoceraSerial"
+
+As the result, log should show following lines, and no error messages:
+
+ Sending Read HeadInpVoltage command
+ Sending Kyocera Head command 0xFEFEFE04190000E300000000
+ ....

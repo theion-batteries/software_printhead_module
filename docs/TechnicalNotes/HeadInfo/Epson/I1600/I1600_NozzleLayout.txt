@@ -1,0 +1,54 @@
+=================================================================================================
+    Some information on nozzle layout for the Epson I1600 head
+=================================================================================================
+
+This document shows head nozzle layout from our HDC point of view.
+
+The head has 4 nozzle rows, every nozzle row belongs to its own colour plane.
+Y-resolution of every row is 300DPI and it has 400 nozzles. 
+2 rows in every ASIC are interlaced in Y-direction, which gives 800 pixels in a head swath.
+
+Important! The picture below if a view THROGH the head on to the paper.
+
+
+            ASIC2        ASIC2     <- I3200 ASIC number 
+            F  E         D  C      <- original HMB-I3200 nozzle rows (the head is driven by modified HMB-I3200 and the same FPGA)
+            ---------------------
+
+            ASIC1        ASIC0     <- I1600 ASIC number (Chip2..1 in Epson terminology)
+    
+            D  C         B  A      <- Epson I1600 nozzle rows notation, used only to work out colours
+
+            ...O............O...   <- topmost nozzle, Logical nozzle 0 for Orientation 0
+            O............O......   
+               O            O   
+            O            O      
+               O            O   
+            ....         ....   
+
+            O            O      
+               O            O   
+            O            O      
+                                
+                
+                
+            A  B         B  A      <- Our ASIC nozzle row notation
+
+           C3  C2       C1  C0     <- Colour plane index (the way ink is plumbed in the head)
+
+
+
+Ink ports to colour planes mapping.
+
+    ink Port0   -> row A -> C1 -> Meteor colour Plane2   *:1:2
+    ink Port1   -> row B -> C0 -> Meteor colour Plane1   *:1:1
+    ink Port2   -> row C -> C2 -> Meteor colour Plane3   *:1:3
+    ink Port3   -> row D -> C4 -> Meteor colour Plane4   *:1:4
+
+
+
+
+
+
+
+

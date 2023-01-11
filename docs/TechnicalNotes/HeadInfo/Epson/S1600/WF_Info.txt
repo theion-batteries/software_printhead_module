@@ -1,0 +1,14 @@
+=================================================================================================
+Some information on the waveform files for Epson S1600 head family head
+=================================================================================================
+
+Basically, all waveform information for S1600 head is absolutely the same as for S3200, because 
+they use the same ASICs. The only difference is that S3200 has 4 ASICs (JAs in Meteor terminology) and 
+S1600 has 2 ASICs. So, please refer to S3200 documentation.
+
+
+
+
+
+
+

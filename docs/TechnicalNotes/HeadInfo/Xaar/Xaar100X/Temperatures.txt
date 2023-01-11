@@ -1,0 +1,21 @@
+=================================================================================================
+    Some information on Xaar1001/1002/1003/1006 (HDC-HLM) temperatures     
+=================================================================================================
+
+Xaar1001,1002,1003 heads are driven by HDC-HLM. The heads themselves don't have any built-in thermistors and heaters.
+Instead, HDC-HLM has one thermistor input (board connector marked as "Therm") and no temperature control outputs. 
+So, it is only possible just to read external thermistor temperature.
+
+Thermistor should have following parameters: 100K at 25C and B-const 3428.
+
+This temperature is displayed in Monitor program ("Status" tab -> HDC pane) and can also be retrieved by 
+user application as:
+
+    TAppHeadStatus::Temperature1  ---> Ext.temperature, 10x scaled
+
+
+
+
+
+
+

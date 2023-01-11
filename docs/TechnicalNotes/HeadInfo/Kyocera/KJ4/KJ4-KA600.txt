@@ -1,0 +1,179 @@
+=================================================================================================
+    Some information about configuration parameters for Kyocera KJ4 head driven by  PDC-2KA600
+=================================================================================================
+
+
+Hardware configuration:
+    PDC-2KA600 drives two KJ4 heads. Default config file is: "DefaultKA600.cfg"
+
+
+Notes on PCC/HDC/Head configuration:
+    Basically, PDC-2KA600 is a usual PCC that drives two HDCs, each HDC drives one head. The only thing that
+    PCC+HDCs are located on the same PCB. So, heads addressing looks as follows:
+
+        Head1 on PDC3 ->  PCC:3, HDC:1, Head:1
+        Head2 on PDC3 ->  PCC:3, HDC:2, Head:1            
+    
+    Note that head index is always 1 (HDC drives one head only), but HDC index specifies which "head" is
+    being addressed.
+
+
+
+-----------------------------------------------------------------------------------
+--- Setting KJ4 voltages (whole head only):
+--- This is the new way, should be pretty convenient to use.
+
+The simplest way to set whole head voltage is to specify parameter "HeadVoltageAdj" in the Meteor config file.
+This parameter can be specified in [DefaultParameterValues], [ControllerX], [HeadDriverX:Y] sections.
+Thus, it is now possible to specify drive voltages for individual heads on the same PDC.
+
+The legacy "HeadVoltageAdjust" parameter in [KJ4] section still works (as a global default value), but it is
+not recommended to use.
+
+"HeadVoltageAdj" parameter value range is: [-4.0...+4.0] Volts. The default value is 0V.
+
+Example:
+ 
+    [DefaultParameterValues]
+    HeadVoltageAdj = 0  ;-- default talue for the whole system
+
+
+    [HeadDriver1:1]
+    HeadVoltageAdj = 1.23 ;-- value for Head1 on PDC:1
+
+
+"HeadVoltageAdj" parameter is mapped to KPEX_HeadVoltageAdj and can be set/read via PiSetParamEx()/PiGetParamEx() API.
+
+
+
+-----------------------------------------------------------------------------------
+--- Setting KJ4 voltages (whole head only):
+--- !!!! This is the legacy old way and it is not recommended for future use
+
+
+The simplest way to set heads voltage is to specify parameter "HeadVoltageAdjust" in [KJ4] section.
+The problem is for PDC-2KA600 this setting will be applied for both heads.
+It is possible to set different voltages for individual heads, for this it is neccesary to use
+parameter CCP_KHEAD_VOLTAGE:
+
+    CCP_KHEAD_VOLTAGE = 0x00000023,   // Head voltage adjust setting. The range is +/-4V from factory 
+                                      // setting in 0.1V increments. The setting value is multiplied by 10 
+                                      // so, for 1.0V enter 0xA (-10 would be 0xF6)
+
+    CCP_KHEAD_VOLTAGE command addressing: It accepts following arguments to select PCC/Head:
+     * PccNum  - PDC Number  [1..254]  
+     * HeadNum - Head Number [1..2]
+     * "aNum"  - ignored
+
+    Parameter value: Voltage adjustment 10x scaled. I.e. for +1.3v it will be 13
+
+Note that this method sets voltage for the whole head, i.e. for all 4 "print units" within the head.
+
+
+
+
+
+-----------------------------------------------------------------------------------
+--- Setting KJ4 voltages for individual print head units.
+KJ4 head has 4 "print units" or "Jetting Assemblies" (JAs) in Meteor terminology. It is possible to set 
+individual voltages for each of these JAs.
+This feature is disabled by default and needs to be explicitly enabled in a config file.
+
+Reasons for this:
+    * It is unknown if all head revisions support specific serial command to set JA voltages. If the 
+        head rejects such command it will result in an error in Meteor log.
+    * Writing JA voltage absolute value is "permanent". I.e once some absolute JA voltage value is sent to the 
+        head, it overwrites the previous one forever. So, before making any changes it might be a good idea to 
+        read original JA voltages and store them somewhwere. BTW, our head has initial values 22.4V for all JAs.
+
+To enable this feature Meteor config file should have following key:
+    [KJ4]
+    UseAbsVoltages = 1 ; 1 enables setting voltages for head "PrintUnits", 0 (default) disables 
+
+If nothing else is set (no voltage values specified), then Meteor will only read JA voltages and represent them as 
+EEPROM data (see below). This mode is useful when you only need to read JAs driving voltages.
+
+In any case, if the JA voltages are read from the head successfully, log will contain something like:
+    "PCC:1,Head:1 Head Drv.voltages: 24.0, 24.0, 24.0, 24.0"
+
+
+
+-- Specifying JA absolute voltages.
+
+It is done in  [HeadDriverX:Y] or in [HeadX:Y] sections. To recap:
+    PDC-2KA600 drives 2 HDCs, each HDC drives 1 head. 
+        * [HeadDriverX:1] and [HeadDriverX:2] sections address _whole_  head1 and head2 respectively, 
+        * [HeadX:1] and [HeadX:2] sections address head1 and head2 sub-modules.
+
+Head JA voltage is specified by "HeadAbsVoltage" config file parameter that can be placed in  [HeadDriverX:Y] or in [HeadX:Y]
+sections like:
+
+[HeadDriver1:1]       ;-- addresses whole PCC:1, HDC:1 
+HeadAbsVoltage = 20.1 ;-- sets driving voltage 20.1v for ALL 4 "print units" within PCC:1, HDC(head):1 
+                      ;-- might not make a lot of sense.
+
+[Head1:1] ;-- addresses individual JAs on PCC:1, HDC(head):1 
+HeadAbsVoltage = 20.2, 20.3, 20.4, 20.5 ;-- drive doltages for U1..U4 respectively
+
+[Head1:2]    
+;HeadAbsVoltage ; commented out, no setting, so, inherits values from [HeadDriver1:1] 20.1v
+
+
+
+Absolute drive voltage values should be in a range:[20.0, 26.0] volts. 
+Default value 0.0v means "value is not set"
+
+
+If voltages have been written to the head successfully, then following line will be logged:
+    "PCC:1,Head:1 Set drive voltage cmd. succeded"
+
+
+* note: it seems that this doesn't accept properly absolute drive voltages below 20.0 volts. When "Voltage for Unit X"
+    value in serial command 0x40 is set to a negative value (for absolute voltage < 20.0V) the head happily
+    accepts this command, but after power cycling the head it reports absolutely invalid drive voltages that
+    are read by serial commnd 0x13.
+
+
+
+--- Updating head drive voltages on the fly.
+
+It is possible to set new JA voltages by using PiSetParamEx() API and CPEX_HeadVoltageAbs parameter.
+You will also need to specify PEAddress PCC:HDC:1:JA. '1' here means "Head1" (HDC drives only 1 head) and 
+JA [1..4] corresponds to the U1..U4 within the head.
+This parameter can also be set using TestApp (see "\TechnicalNotes\TestApp\Params_Signals.txt" for more detail).
+If the head is powered on, voltage parameters change will be picked up immediately and sent to the head.
+
+
+
+--- Head EEPROM data.
+
+Some static information (head S/N, some voltages) is being read from the head on powering it up and 
+sent to Meteor as "head EEROM data". It may contain some useful bits of information.
+
+See also "\TechnicalNotes\TestApp\Head_EEPROM.txt" for more information.
+
+An example of "head EEROM data" from one of our heads:
+
+{
+  "#HeadType" : "HT_KJ4",
+  "#InfoType" : "Head EEPROM Data",
+  "01-01-01-01" : 
+  {
+    "AdjustmentVoltage" : "1.9",
+    "DelaySelectionregisters" : "06, 02, 06, 02",
+    "DriveNumber" : 2314339114,
+    "HeadDrv.voltages" : "24.0, 24.0, 24.0, 24.0",
+    "SerialNumber" : "",
+    "Shippeddate" : ""
+  }
+}
+
+
+
+
+
+
+
+
+
+

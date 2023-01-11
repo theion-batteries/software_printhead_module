@@ -18,8 +18,6 @@ typedef int32_t       int32;
 typedef uint64_t      uint64;
 typedef int64_t       int64;
 
-typedef uint32 tPccId, tDevNum ;
-
 // Useful bit-definitions
 #define bmBIT0              0x00000001
 #define bmBIT1              0x00000002

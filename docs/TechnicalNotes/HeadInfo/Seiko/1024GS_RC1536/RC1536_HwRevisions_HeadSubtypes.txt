@@ -1,0 +1,144 @@
+=================================================================================================
+    
+    Some information on "Hadware revisions" and "Head sub-types" for Seiko RC1536 head driven by HDC-2Sii1536
+
+=================================================================================================
+
+----------------------------------------------------------------
+--- HDC-2Sii1536 Hardware revisions and "Fast LVDS"
+
+    Currently there are two types of HDC-2Sii1536:
+
+        * ones with HDC hardwre revision prior to "RevH". They do not support "fast LVDS" feature and 
+          their data bandwidth is slightly limited.
+
+        * HDCs with hardwre revision "RevH" and onwards. They support "fast LVDS" and therefore have better 
+          performance. Also, these revisions support aqueous head types recently announced by Seiko (see below). 
+
+
+Unfortunately, it is not possible to auto-detect which HDC revision is used, so, this needs to be specified in 
+Meteor config file. It is possible to mix different HDC revisions within one PCC, but they have to be configured
+as "old revision" ones and such configuration doesn't gain much. In order to use "New revision" HDCs' features,
+given PCC should drive only HDCs with "RevH" and onwards.
+
+--- specifying HDC hardware revision in the Meteor config file:
+
+All default settings specify "old revision" HDCs. So, if you don't need new features, you don't need to do anything.
+HDC-2Sii1536 Hardware revision is set by "HdcHwRevision" key that can be located in [RC1536] (global value) or 
+[ControllerX] (per-PCC settings) sections. Note that key value in [ControllerX] affects ALL HDCs connected to this PCC. 
+
+    Valid values are:
+        1: (default) specifies HDC revisions before "RevH". It will work on ALL HDC revisions, but doesn't 
+           provide any new features. 
+ 
+        2: specifies HDC revisions "RevH" and onwards. It will work only on HDC RevH and onwards. For older 
+           revisions HDCs simply will not powerd on
+
+
+        all other values are invalid and will cause errors.
+
+
+
+--- Configuration example:
+
+    [RC1536]
+    HdcHwRevision = 2   ;-- use "RevH" for the whole system as the default value
+ 
+    [Controller1]
+    HdcHwRevision = 1   ;-- use "old revision" HDCs on PCC1  
+
+    [Controller2]
+    ;HdcHwRevision = 1  ;-- value is commented out, will use one from [RC1536] (2)
+
+
+summary: if you don't need any features that are provided by HDCs with the "RevH" and onwards, then you don't need
+to change anything.
+
+
+
+And now comes the most interesting part...
+
+----------------------------------------------------------------
+--- Seiko RC1536 head sub-types.
+
+Seiko has recently introduced some new variants of RC1536 head that can be used with Aqueous inks.
+There is a little catch though: now using a certain variant of print head + certain variant of ink + a certain 
+waveform can PHYSICALLY damage the head. You can discuss this with Seiko.
+
+First of all, new RC1536 variants that can be used with aqueous inks can be driven by HDC-2Sii1536 "RevH" and onwards only,
+(see above). Thus, a proper "HdcHwRevision" value msut be specified in Meteor config file.
+
+Then, the user MUST specify RC1536 "Head sub-type" or variant in Meteor config file otherwise there will be errors logged
+and printing will be disabled. 
+
+Following "Head sub-types" are currently supported:
+    
+    1:  classic non-aqueous variant, for UV/oil based inks.     Heads: RC1536-M, RC1536-L
+    2:  aqueous variant running with WFM0 disabled (see below)  Heads: RCA1536-M, RCA1536-L
+    3:  aqueous variant running with WFM0 enabled (weird case when non-aqueous ink is used in aqueous head)
+      
+
+-- Head variants and waveform compatibility.
+    
+N.B For the detailed WF description see "WF_Info.txt" file. If you take a look into one of the waveform files, 
+e.g. "SampleRc1536Waveform.txt", you will see that it usually contains description of 9 "waveforms": waveform0..8,
+they in turn a just sequence of 0 and 1.
+
+Important! aqueous RC1536 variants must have "waveform0" disabled, i.e. having all values set to 0.
+"SampleRc1536Waveform.txt" file is an example of this, "Standard_Oil.txt" is the opposite, it can't be used for
+aqueous inks.  
+
+For head sub-type 2 waveform file is checked, and if it has non-zero "waveform0" values, the error message will 
+be logged and printing will be disabled.
+
+
+"Head sub-type" can be specified for the whole system,  concrete PCC, concrete HDC and even head. I.e. HDC-2Sii1536
+can drive 2 heads with different sub-types.
+
+When properly configured, you can find something like following lines in Meteor log: 
+
+    ### [PCC:1,HDC:4] has hardware RevH and onwards. Head sub-type must be specified 
+    ### non-aqueous head variant:1 (RC/RCH) is specified for[PCC:1,HDC:4,Head:1]
+    ### aqueous head variant:2 (RCA) running with WFM0 disabled is specified for[PCC:1,HDC:4,Head:2]
+
+
+
+--- Configuration example:
+
+    [RC1536]    
+    HdcHwRevision = 2   ;-- use "RevH" for the whole system as the default value
+
+
+    [DefaultParameterValues]
+    HeadSubType = 1 ; system-default: use classic non-aqueous variant, for UV/oil based inks. 
+
+    [Controller1]
+    HeadSubType = 1,1,2,1,1,1,1,1 ;-- 8 values for HDC1..HDC8 on PCC1. All heads on HDC3 have sub-type 2 
+
+    
+    [HeadDriver1:1]     ;--- settings specific for PCC1:HDC1
+    HeadSubType = 1,2   ;-- PCC1:HDC1,Head1 has sub-type1, PCC1:HDC1,Head2 has sub-type2
+
+
+--- some notes
+
+HDC-2Sii1536 can drive 2 heads. If some head is not physically connected to the HDC, then it is possible that 
+the sytem will try to access it anyway to read some specific information regarding the head sub-type (aqueous/normal).
+In this case the read will fail because there is no head and error like following will be logged:
+"*** Status: [PCC:1,HDC:4] Error: i2c read Head2 Wf setting"
+Which indicates read failure (ehad not present) for Head1 on Pcc:1, HDC:4.
+Actually, there is nothing wrong with it, but if you use just one head on HDC and do not want to see errors like that, 
+then you will have to remove the absent head from the [planes] section in the Meteor config file.
+This will tell the system that the head is not present at all. 
+
+
+
+
+
+
+
+
+
+
+
+

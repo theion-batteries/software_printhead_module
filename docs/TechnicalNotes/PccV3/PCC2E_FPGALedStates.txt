@@ -1,0 +1,94 @@
+=================================================================================================
+    Some information regarding PCC2-E FPGA LED states
+=================================================================================================
+
+PCC2-E among others LEDs has those ones:
+
+
+LED_Green1  near big FPGA chip
+LED_Green2  near big FPGA chip
+LED_Amber1  near big FPGA chip
+LED_Amber2  near big FPGA chip
+
+
+LED_Blue(near Eth. connector)
+
+These LEDs used to indicate PCC state and some activity, as described below:
+
+
+---------------------------------------------------
+--      PrintApp LED states
+---------------------------------------------------
+
+LED_Green1 FPGA heartbeat. 
+
+LED_Green2 PrintApp heartbeat, around 800ms flashing. Flashes when PrintApp starts main loop, i.e.
+           all systems are initialised and PrintEngine fully connected. 
+
+
+LED_Amber1 Network stack state:
+           ON           - Network stack is being initilaised
+           Fast flash   - Network stack init Ok and we are asking DHCP server for IP address (in progress)
+           OFF          - Network stack is fully running
+
+LED_Amber2 Application type, OFF for PrintApp  
+
+
+
+LED_Blue  states:  
+           OFF          - normal working state
+           Fast flash   - Something is wrong with PCC software: hang or crashed or in a some bad state
+           Slow flash   - "Identify PCC" command received
+
+
+
+---------------------------------------------------
+--      LoaderApp LED states
+---------------------------------------------------
+
+LED_Green1 FPGA heartbeat. 
+
+LED_Green2 Flashes when LoaderApp receives command from the PrintEngine or other client
+
+
+LED_Amber1 Network stack state:
+           ON           - Network stack is being initilaised
+           Fast flash   - Network stack init Ok and we are asking DHCP server for IP address (in progress)
+           OFF          - Network stack is fully running
+
+LED_Amber2 Application type, flashing for LoaderApp  
+
+
+LED_Blue  states:  
+           OFF          - normal working state
+           Fast flash   - Something is wrong with PCC software: hang or crashed or in a some bad state
+
+
+
+
+---------------------------------------------------
+--      BootApp LED states
+---------------------------------------------------
+
+LED_Green1 FPGA heartbeat. 
+
+LED_Green2  Flashes when BootApp receives command from the PrintEngine or other client
+
+
+LED_Amber1 Network stack state:
+           ON           - Network stack is being initilaised
+           Fast flash   - Network stack init Ok and we are asking DHCP server for IP address (in progress)
+           OFF          - Network stack is fully running
+
+LED_Amber2 Application type, ON for BootApp  
+
+
+LED_Blue  states:  
+           OFF          - normal working state
+           Fast flash   - Something is wrong with PCC software: hang or crashed or in a some bad state
+
+
+
+
+
+

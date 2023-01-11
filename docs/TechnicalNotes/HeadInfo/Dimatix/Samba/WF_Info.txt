@@ -1,0 +1,172 @@
+=================================================================================================
+    
+Some information on the waveform files for Dimatix Samba heads.
+
+=================================================================================================
+
+
+General information about WF file format:
+
+*   Whole WF described in the "waveform" file is made of "WF pulses". Number of pulses in the waveform is from 1 to 8. 
+    Pulse numbers start from 0.
+
+*   Each pulse is described by a section [Pulse0]...[Pulse7]. Numbering should be sequential, no gaps allowed.
+
+*   Each WF pulse is made of "WF segments" Number of segments in the pulse is [2..8], they are described by keys 
+    Seg0..Seg7 in a pulse section. Segments numbering should be sequential, no gaps allowed.
+
+
+*   Max. total number of segments in a whole WF is 31; note that a "pulse" can consist of more than 2 segments.  
+
+*   Each segment describes a transition of the voltage and a "Hold time", when voltage doesn't change. 
+
+*   Segment format: <StartVoltage(V)>, <EndVoltage(V)>, <SlewRate(V/us)>, <Hold Time(us)> 
+
+*   Each Pulse has a 8-bit GreyLevel mask associated with it.  Every bit in the GL mask byte is set 
+    if this WF pulse will be used to eject ink for a particular 3BPP pixel data.
+    For a binary waveform (printing 1BPP) the GL mask is usually 0xFE
+
+
+==== An example of 3 different segments =========================================================
+
+   Segment                      Segment                     Segment
+   Slew Rate < 0                Slew Rate > 0               Slew Rate == 0
+                                                            startV == endV
+                                  endV->  -----
+                                         / Hold             *--------*
+   startV-> \                           /  time             <- Hold -> 
+             \                         /                       Time
+   endV->     \-------        startV->/ 
+                 Hold
+                 time
+
+
+==== An example of a pulse made of 3 segments ===================================================
+
+         .<----- Pulse0 ---->.
+         .                   .
+         .                ___.
+         .\   .       .  /   .
+         . \__.       . /    .
+         .    .\      ./     .
+         .    . \-----.      .
+         .    .       .      .
+           S0     S1     S2
+
+
+Waveform constraints:
+ * 1..16 pulses per Waveform, 2..8 segmenst per pulse, up to 31 segments in total.
+ * Whole WF should start and end at the same voltage.
+ * No voltage discontinuity between pulses - prev. pulse endV must be equal to the next pulse startV
+ * No voltage discontinuity between segments within one pulse
+ * Hold time can't be < 25ns and > 4096*25nS
+ * absolute Min & Max voltages are properties of the hardware and hardcoded [-36.0...0] volts 
+
+
+=================================================================================================
+"All ON" signal control.
+
+This is an optional signal that can be controlled on a WF pulse/segment basis.
+By default it is OFF during active part of the waveform.
+In order to control value of "All ON" signal during WF pulse the following parameter should be specified in [Pulse] section:
+
+--
+AllOnMask = "value"; 
+--
+
+Where "value" is a decimal or hexadecimal number, which is a bitmap where bit0 corresponds to the "All ON" signal value
+during segment0 of this pulse, bit1 sets "All ON" value for segment1 and so on.
+
+For example:
+
+--
+[Pulse0]
+Seg0 = <...> ; some values
+Seg1 = <...>
+
+AllOnMask = 0x01
+--
+Here Pulse0 consists of 2 segments: Seg0 and Seg1; During Seg0 "All ON" signal will be ON, 
+during Seg1 "All ON" signal will be OFF, because bit0 of "AllOnMask" bitmap is 1 and bit1 is 0.
+
+Using "AllOnMask = 0x03" will result in "All ON" signal=ON during both segment (or whole pulse)
+
+The max. value of "AllOnMask" parameter depends on the number of segments in a pulse. Number of 
+rightmost bits set to 1 can't ecxeed number of segments. Thus, for the example above valid values 
+are: 0, 1, 2, 3. 
+
+
+=================================================================================================
+====    Tickling and tickle waveforms
+=================================================================================================
+
+
+For the Samba print head there are 2 types of tickling:
+
+    1.  Tickle while the carriage is moving (there are encoder pulses)
+        This type of tickle happens when the carriage is moving but there is no data to be printed. 
+        Whether this is activated depends on if the working waveform has a tickle pulse specified for grey level 0.
+        So, the user should have a proper working waveform. 
+
+
+    2.  Idle tickle. 
+        This type of tickle happens when there are no encoder pulses and the carriage/media is idle. 
+        There are some settings required in the config file to control this:
+        
+        ......
+        [System]
+        Tickle      = 1     ; Set to 1 to enable tickle.  Can also be set in ControllerX sections
+        TickleFreqHz= 8000  ; Spit and tickle frequency
+
+
+        [HeadDriverX:Y]
+        TickleWaveformFileIdx = 0 ; this is the waveform (grey level 0 pulse) that will be used for the idle tickle
+        ......
+        
+        So, for this case the user should have a special tickling waveform and specify tickling waveform index (0 if not used), 
+        this index works the same way as working "WaveformFileIdx" does.
+
+
+
+=================================================================================================
+====    Waveform voltages scaling 
+=================================================================================================
+
+It is possible to slightly vary WF voltages without changes in WF file.
+This "WF scaling" can be applied to: 
+ * each head side individually
+ * each head (both sides at the same time)
+ * all heads/HDCs on the same PCC
+ * All PCCs/HDCs/Heads in whole system.
+
+WF scaling is specified by 2 parameters in the config file: "WF_VScale_Coeff" and "WF_VScale_Mode"
+
+"WF_VScale_Coeff" is just a coefficient [0.5...1.5] that used as a multiplier to the WF voltage from WF file.
+Note that it has quite narrow range.
+
+"WF_VScale_Mode" Specifies mode of scaling: either keeping pulse width (and whole WF length) constant or 
+keeping slew rate and pulse hold time constant. If scaling mode is  0 there will be no scaling at all.
+Possible values are:  0:scaling disabled (default), 1:keep pulse width, 2:keep slew rate
+
+Both of these parameters can be in any of the sections: [DefaultParameterValues], [ControllerX], [HeadDriverX:Y], [HeadX:Y]. 
+Usual mechanism of “parameters overriding” applies.
+
+If due to scaling WF voltages go out of valid range, then error message is logged and waveform is ignored.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
