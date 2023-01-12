@@ -139,3 +139,9 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::endPrinting()
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 
 }
+
+
+    bool meteorAdapter::getStatus()
+    {
+        return connected;
+    }

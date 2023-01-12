@@ -26,6 +26,7 @@ public:
     void setImgPath(_TCHAR* ImgPath);
     wgm_feedbacks::enum_hw_feedback startPrinting();
     wgm_feedbacks::enum_hw_feedback endPrinting();
+    bool getStatus();
 
 
 private:
