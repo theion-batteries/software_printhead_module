@@ -66,3 +66,76 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::turnOffPh()
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 
 }
+
+void meteorAdapter::setImgPath( _TCHAR* ImgPath)
+{
+    bitmap1 = ImgPath;
+}
+wgm_feedbacks::enum_hw_feedback meteorAdapter::startPrinting()
+{
+    if (bitmap1 == NULL) // we couldn'T loaded the img
+    {
+        assert("no image loaded");
+    }
+
+    auto ImageBuffer = MakeBitmap(bitmap1);
+
+    // redo same img in opposite direction
+    if (CheckScan(PrinterParams.scanning, PrinterParams.jobtype, bitmap1, &ImageBuffer)) {
+        // Everything ok, so start printing now
+
+        // Reset the printer
+        InitialisePrinter(PrinterParams.scanning);
+
+        // Specify the parameters of the job
+        if (StartJob(PrinterParams.jobid, PrinterParams.jobtype, PrinterParams.res, PrinterParams.docwidth)) {
+
+            //
+            // Number of documents to send.  For FIFO, each copy of the
+            // document is sent by the application; FIFO is typically used for
+            // variable data, although in this example all documents are identical.  
+            // For preload, the document is repeated from PCC memory, so only
+            // needs to be sent once
+            //
+            int cycle = (JT_PRELOAD == PrinterParams.jobtype) ? 1 : PrinterParams.ncopies;
+
+            for (int i = 0; i < cycle; i++) {
+
+                // Start the document
+                Start(PrinterParams.scanning, PrinterParams.jobtype, PrinterParams.ncopies, PrinterParams.docid);
+
+                // Send the image.  We already created the header when we generated the ImageBuffer,
+                // so all we need to do here is send the ImageBuffer
+                puts("Sending Image");
+                SendImage(ImageBuffer);
+
+                // Finished sending images, send the end doc command
+                EndDoc();
+
+                // If using PrinterParams.scanning printing, send the second document
+                if (PrinterParams.scanning) {
+                    ScanSendSecondDoc(ImageBuffer);
+                }
+
+            }
+
+            // Finished sending the document, send the end job command
+            EndJob();
+
+        }
+
+  
+    }
+
+    free(ImageBuffer);
+    return wgm_feedbacks::enum_hw_feedback::hw_success;
+    
+}
+
+
+wgm_feedbacks::enum_hw_feedback meteorAdapter::endPrinting()
+{
+    EndJob();
+    return wgm_feedbacks::enum_hw_feedback::hw_success;
+
+}
