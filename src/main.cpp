@@ -5,11 +5,11 @@
 
 void testApi1(meteorAdapter* phIntptr);
 void testApi2(meteorAdapter* phIntptr);
-
+_TCHAR img[] = "C:/Users/PrintHead/Desktop/dev_sami/software_printhead_module/docs/dots.bmp";
 int main()
 {
-   
-    testApi1(new meteorAdapter);
+    //testApi1(new meteorAdapter);
+    testApi2(new meteorAdapter);
 }
 
 void testApi1(meteorAdapter* phIntptr)
@@ -38,4 +38,12 @@ void testApi1(meteorAdapter* phIntptr)
     bool status = PiIsBusy();
     std::cout << "return code: " << status << std::endl;
     delete phIntptr;
+}
+
+void testApi2(meteorAdapter* phIntptr)
+{
+phIntptr->connect();
+phIntptr->setImgPath(img);
+phIntptr->startPrinting();
+phIntptr->disconnect();
 }
