@@ -79,7 +79,8 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::startPrinting()
 {
     if (bitmap1 == NULL) // we couldn'T loaded the img
     {
-        assert("no image loaded");
+        puts("no image loaded");
+        return wgm_feedbacks::enum_hw_feedback::hw_error;
     }
 
     auto ImageBuffer = MakeBitmap(bitmap1);
