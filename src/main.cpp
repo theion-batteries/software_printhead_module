@@ -5,7 +5,7 @@
 void testApi1(meteorAdapter* phIntptr);
 void testApi2(meteorAdapter* phIntptr);
 _TCHAR img[] = "C:/Users/PrintHead/Desktop/dev_sami/software_printhead_module/docs/dots.bmp";
-PrintingParameters configPtr;
+cooling_config_yaml_params configPtr;
 int main()
 {
     //testApi1(new meteorAdapter);

@@ -92,6 +92,10 @@ set_target_properties( PrinterInterfaceCLSdll PROPERTIES IMPORTED_LOCATION ${CMA
 
 file(GLOB lib_SRCS
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/meteorAdapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Bitmaps.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/MeteorPath.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/SamplePrint.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/stdafx.cpp"
 )
 add_library(ph_interface_lib STATIC ${lib_SRCS})
 
@@ -138,7 +142,6 @@ install(FILES ${meteor_dlls} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 
 file(GLOB exe_SRCS
-		"${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/*.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 add_executable(ph_interface_exe ${exe_SRCS})

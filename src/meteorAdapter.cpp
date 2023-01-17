@@ -1,6 +1,6 @@
 #include "meteorAdapter.h"
 
-meteorAdapter::meteorAdapter(PrintingParameters& configPtr)
+meteorAdapter::meteorAdapter(cooling_config_yaml_params& configPtr)
 {
 PrinterParams=configPtr;
 }
