@@ -2,10 +2,10 @@
 #include <chrono>
 #include <thread>
 
-
 void testApi1(meteorAdapter* phIntptr);
 void testApi2(meteorAdapter* phIntptr);
-_TCHAR img[] = "C:/Users/PrintHead/Desktop/dev_sami/software_printhead_module/docs/dots.bmp";PrintingParameters configPtr;
+_TCHAR img[] = "C:/Users/PrintHead/Desktop/dev_sami/software_printhead_module/docs/dots.bmp";
+PrintingParameters configPtr;
 int main()
 {
     //testApi1(new meteorAdapter);

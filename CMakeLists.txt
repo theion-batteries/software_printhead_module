@@ -95,7 +95,7 @@ file(GLOB lib_SRCS
 )
 add_library(ph_interface_lib STATIC ${lib_SRCS})
 
-target_link_libraries(ph_interface_lib ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll} )
+target_link_libraries(ph_interface_lib PUBLIC ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll} )
 
 target_include_directories(ph_interface_lib 
 PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/includes/
@@ -143,7 +143,7 @@ file(GLOB exe_SRCS
 )
 add_executable(ph_interface_exe ${exe_SRCS})
 
-target_link_libraries(ph_interface_exe ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll})
+target_link_libraries(ph_interface_exe PUBLIC ${PrinterInterfaceLib} )#${PrinterInterfaceDll} ${PrintEngine} ${MeteorCLSdll} ${PrinterInterfaceCLSdll})
 
 target_include_directories(ph_interface_exe 
 PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/includes/
