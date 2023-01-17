@@ -5,8 +5,12 @@
 #include "hardware_feedback.h"
 #include "SamplePrint.h"
 
-struct PrintingParameters
+struct cooling_config_yaml_params
 {
+    double distance_to_center = 50; // after homing = go to center position where cnt dispenser will vibrate
+    int number_of_rotation_per_direction = 10; // frequency for dispensing
+    bool reverse_direction = false; // duration of vibration 100 ms
+    std::string path_to_upload_img = ""; //optional path for img direct load
     DWORD jobid = 0;					// Default to 0
     DWORD jobtype = JT_PRELOAD;			// Default to Preload path
     DWORD res = RES_HIGH;				// Default to high resolution
@@ -18,7 +22,7 @@ struct PrintingParameters
 class meteorAdapter
 {
 public:
-
+    meteorAdapter(cooling_config_yaml_params& configPtr);
     wgm_feedbacks::enum_hw_feedback connect();
     wgm_feedbacks::enum_hw_feedback disconnect();
     wgm_feedbacks::enum_hw_feedback turnOnPh();
@@ -33,6 +37,6 @@ private:
     bool connected = false;
     bool headPowered = false;
     _TCHAR* bitmap1 = NULL;
-    PrintingParameters PrinterParams;
+    cooling_config_yaml_params PrinterParams;
 
 };

@@ -1,5 +1,9 @@
 #include "meteorAdapter.h"
 
+meteorAdapter::meteorAdapter(cooling_config_yaml_params& configPtr)
+{
+PrinterParams=configPtr;
+}
 
 wgm_feedbacks::enum_hw_feedback meteorAdapter::connect()
 {
