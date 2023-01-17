@@ -5,11 +5,11 @@
 
 void testApi1(meteorAdapter* phIntptr);
 void testApi2(meteorAdapter* phIntptr);
-
+PrintingParameters configPtr;
 int main()
 {
    
-    testApi1(new meteorAdapter);
+    testApi1(new meteorAdapter(configPtr));
 }
 
 void testApi1(meteorAdapter* phIntptr)

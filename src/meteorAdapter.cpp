@@ -1,5 +1,9 @@
 #include "meteorAdapter.h"
 
+meteorAdapter::meteorAdapter(PrintingParameters& configPtr)
+{
+PrinterParams=configPtr;
+}
 
 wgm_feedbacks::enum_hw_feedback meteorAdapter::connect()
 {
@@ -67,7 +71,7 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::turnOffPh()
 
 }
 
-void meteorAdapter::setImgPath( _TCHAR* ImgPath)
+void meteorAdapter::setImgPath(_TCHAR* ImgPath)
 {
     bitmap1 = ImgPath;
 }
@@ -124,12 +128,12 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::startPrinting()
 
         }
 
-  
+
     }
 
     free(ImageBuffer);
     return wgm_feedbacks::enum_hw_feedback::hw_success;
-    
+
 }
 
 
@@ -141,7 +145,7 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::endPrinting()
 }
 
 
-    bool meteorAdapter::getStatus()
-    {
-        return connected;
-    }
+bool meteorAdapter::getStatus()
+{
+    return connected;
+}

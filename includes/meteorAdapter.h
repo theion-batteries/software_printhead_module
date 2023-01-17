@@ -18,7 +18,7 @@ struct PrintingParameters
 class meteorAdapter
 {
 public:
-
+    meteorAdapter(PrintingParameters& configPtr);
     wgm_feedbacks::enum_hw_feedback connect();
     wgm_feedbacks::enum_hw_feedback disconnect();
     wgm_feedbacks::enum_hw_feedback turnOnPh();
