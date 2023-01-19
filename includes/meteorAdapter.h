@@ -8,6 +8,7 @@
 struct cooling_config_yaml_params
 {
     double distance_to_center = 50; // after homing = go to center position where cnt dispenser will vibrate
+    double ph_rotate_to_center= 10; // after homing: rotate the ph x angle to be centered
     int number_of_rotation_per_direction = 10; // frequency for dispensing
     bool reverse_direction = false; // duration of vibration 100 ms
     std::string path_to_upload_img = ""; //optional path for img direct load
