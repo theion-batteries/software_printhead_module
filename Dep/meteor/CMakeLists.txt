@@ -1,7 +1,7 @@
 
 find_library( PrinterInterfaceLib 
 NAMES PrinterInterface PrintEngine MeteorCLS PrinterInterfaceCLS
-PATHS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+PATHS "${CMAKE_CURRENT_SOURCE_DIR}/lib/"
 NO_DEFAULT_PATH
 REQUIRED
 )
@@ -10,14 +10,14 @@ find_path(
 METEOR_INC
 NAMES Meteor.h PrinterInterface.h typedef.h
 NO_DEFAULT_PATH
-HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/include/"
+HINTS "${CMAKE_CURRENT_SOURCE_DIR}/include/"
 REQUIRED
 )
 find_file(
 METEOR_LIBS
 NAMES PrinterInterface.lib PrinterInterface.dll PrintEngine.dll MeteorCLS.dll PrinterInterfaceCLS.dll  
 NO_DEFAULT_PATH
-HINTS "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/"
+HINTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/"
 REQUIRED
 )
 
