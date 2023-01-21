@@ -40,7 +40,7 @@ add_library( PrinterInterfaceCLSdll SHARED IMPORTED  GLOBAL)
 set_target_properties( PrinterInterfaceCLSdll PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/lib/PrinterInterfaceCLS.dll)
 
 # copy dlls one by one 
-function(copy_dlls_target_dir target_exe)
+function(copy_dlls_meteor_target_destination target_exe)
 add_custom_command(TARGET ${target_exe} POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy_if_different  $<TARGET_FILE:PrinterInterfaceDll> $<TARGET_FILE_DIR:${target_exe}> 
 COMMAND ${CMAKE_COMMAND} -E copy_if_different  $<TARGET_FILE:PrintEngine> $<TARGET_FILE_DIR:${target_exe}> 

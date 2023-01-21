@@ -38,19 +38,7 @@ set_target_properties(
       INTERFACE_INCLUDE_DIRECTORIES ${METEOR_INC}
       IMPORTED_LOCATION ${METEOR_LIBS}
 )
-############################# install target lib ########################################
-install(TARGETS ph_interface_lib DESTINATION lib
-)
-copy_dlls_target_dir(ph_interface_lib)
-FILE(GLOB files "${CMAKE_CURRENT_SOURCE_DIR}/includes/*.h"  "${METEOR_INC}/*.h"
-)
-install(FILES ${files} DESTINATION include/ph_interface_lib/)
 
-FILE(GLOB meteor_dlls  "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/*.dll"  )
-install(FILES ${meteor_dlls} 
-CONFIGURATIONS Debug
-RUNTIME DESTINATION bin/Debug
-)
 ############################# build executable  ###################################
 file(GLOB exe_SRCS
 "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -67,15 +55,18 @@ set_target_properties(
       INTERFACE_INCLUDE_DIRECTORIES ${METEOR_INC}
       IMPORTED_LOCATION ${METEOR_LIBS}
 )
-copy_dlls_target_dir(ph_interface_exe)
-############################# install target exe ########################################
-install(TARGETS ph_interface_exe 
+copy_dlls_meteor_target_destination(ph_interface_exe)
+############################# install targets ########################################
+copy_dlls_meteor_target_destination(ph_interface_lib)
+FILE(GLOB files "${CMAKE_CURRENT_SOURCE_DIR}/includes/*.h"  "${METEOR_INC}/*.h"
+)
+install(FILES ${files} DESTINATION include/ph_interface_lib/)
+FILE(GLOB meteor_dlls  "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/*.dll"  )
+install(FILES ${meteor_dlls} 
 CONFIGURATIONS Debug
 RUNTIME DESTINATION bin/Debug
 )
-copy_dlls_target_dir(ph_interface_exe)
-#FILE(GLOB meteor_dlls  "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/*.dll"  )
-#install(FILES ${meteor_dlls} 
-#CONFIGURATIONS Debug
-#RUNTIME DESTINATION bin/Debug
-#)
+install(TARGETS ph_interface_exe ph_interface_lib
+CONFIGURATIONS Debug
+RUNTIME DESTINATION bin/Debug
+)
