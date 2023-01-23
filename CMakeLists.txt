@@ -18,6 +18,8 @@ if (MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 add_subdirectory(Dep/meteor)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>) 
+
 ###################### Build Library ############################
 file(GLOB lib_SRCS
 		"${CMAKE_CURRENT_SOURCE_DIR}/src/meteorAdapter.cpp"
