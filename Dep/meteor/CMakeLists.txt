@@ -13,6 +13,7 @@ project(meteorPh VERSION "1.0")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 #This is necessary for MSVC to create a symbol file, .lib, besides a shared library, .dll
 if (MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
