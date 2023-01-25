@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_PREFIX_PATH "C:/Qt/6.4.0/msvc2019_64")
+#set(CMAKE_PREFIX_PATH "C:/Qt/6.4.0/msvc2019_64")
 #This is necessary for MSVC to create a symbol file, .lib, besides a shared library, .dll
 if (MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
