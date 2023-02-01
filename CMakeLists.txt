@@ -69,6 +69,6 @@ FILE(GLOB meteor_dlls  "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/*.dll"  )
 install(FILES ${meteor_dlls} 
 RUNTIME DESTINATION bin/Debug
 )
-install(TARGETS ph_interface_exe ph_interface_lib
+install(TARGETS  ph_interface_lib #ph_interface_exe
 RUNTIME DESTINATION bin/Debug
 )
