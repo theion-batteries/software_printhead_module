@@ -30,19 +30,19 @@ file(GLOB lib_SRCS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/SamplePrint.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/stdafx.cpp"
 )
-add_library(ph_interface_lib STATIC ${lib_SRCS})
-target_link_libraries(ph_interface_lib PUBLIC ${PrinterInterfaceLib} )
-target_include_directories(ph_interface_lib 
+add_library(meteorLib STATIC ${lib_SRCS})
+target_link_libraries(meteorLib PUBLIC ${PrinterInterfaceLib} )
+target_include_directories(meteorLib 
 PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/includes/
 PUBLIC  ${METEOR_INC}
 )
 set_target_properties(
-    ph_interface_lib
+    meteorLib
     PROPERTIES
       INTERFACE_INCLUDE_DIRECTORIES ${METEOR_INC}
       IMPORTED_LOCATION ${METEOR_LIBS}
 )
-copy_dlls_meteor_target_destination(ph_interface_lib)
+copy_dlls_meteor_target_destination(meteorLib)
 
 ############################# build executable  ###################################
 file(GLOB exe_SRCS
@@ -64,11 +64,11 @@ copy_dlls_meteor_target_destination(ph_interface_exe)
 ############################# install targets ########################################
 FILE(GLOB files "${CMAKE_CURRENT_SOURCE_DIR}/includes/*.h"  "${METEOR_INC}/*.h"
 )
-install(FILES ${files} DESTINATION include/ph_interface_lib/)
+install(FILES ${files} DESTINATION include/meteorLib/)
 FILE(GLOB meteor_dlls  "${CMAKE_CURRENT_SOURCE_DIR}/Dep/meteor/lib/*.dll"  )
 install(FILES ${meteor_dlls} 
 RUNTIME DESTINATION bin/Debug
 )
-install(TARGETS  ph_interface_lib #ph_interface_exe
+install(TARGETS  meteorLib #ph_interface_exe
 RUNTIME DESTINATION bin/Debug
 )
