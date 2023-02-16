@@ -19,14 +19,21 @@ struct cooling_config_yaml_params
     DWORD ncopies = 1;					// Default to 1 copy of the document
     DWORD docid = 1;					// Default to a document ID of 1
     int scanning = 0;					// Default to not scanning
+
+    std::string ph_motion_server_ip = "192.168.0.205"; //# 192.168.0.209 "127.0.0.1"
+    uint16 ph_motion_server_port = 8882;
+    std::string ph_rotation_server_ip = "192.168.0.205"; //# 192.168.0.209 "127.0.0.1" # rotation / trigger
+    uint16 ph_rotation_server_port = 8882;
+    std::string ph_trigger_server_ip = "192.168.0.205"; //# 192.168.0.209 "127.0.0.1" # trigger / trigger
+    uint16 ph_trigger_server_port = 8881;
     double phead_travel = 150;
     double phead_max_travel = 220;
     double phead_rotations = 5;
     double phead_max_rotations = 50;
     double phead_max_linear_speed = 400;
     double phead_max_rot_speed = 100;
-
-
+    double phead_intermediate_stop = 50;    //                        # so printhead will stop here, rotate the angle defined by the following parameter, and keep going.
+    double phead_start_angle = 90; //                       # before moving the printhead to the cooling surface, it needs to be rotated.
 };
 class meteorAdapter
 {
@@ -36,7 +43,7 @@ public:
     wgm_feedbacks::enum_hw_feedback disconnect();
     wgm_feedbacks::enum_hw_feedback turnOnPh();
     wgm_feedbacks::enum_hw_feedback turnOffPh();
-    void setImgPath(_TCHAR* ImgPath);
+    wgm_feedbacks::enum_hw_feedback  setImgPath(_TCHAR* ImgPath);
     wgm_feedbacks::enum_hw_feedback startPrinting();
     wgm_feedbacks::enum_hw_feedback endPrinting();
     bool getStatus();

@@ -74,6 +74,7 @@ wgm_feedbacks::enum_hw_feedback meteorAdapter::turnOffPh()
 void meteorAdapter::setImgPath(_TCHAR* ImgPath)
 {
     bitmap1 = ImgPath;
+    return wgm_feedbacks::enum_hw_feedback::hw_success;
 }
 wgm_feedbacks::enum_hw_feedback meteorAdapter::startPrinting()
 {
