@@ -14,29 +14,29 @@ int main()
 
 void testApi1(meteorAdapter* phIntptr)
 {
-     std::cout << "***************************  testing meteor sdk apis *****************************" << std::endl;
-    std::cout << "eret functions tests" << std::endl;
-    std::cout << "test succes return code: 0 " << std::endl;
-    std::cout << "test error return code: see docs " << std::endl;
+     std::cout << "***************************  testing meteor sdk apis *****************************" << "\n";
+    std::cout << "eret functions tests" << "\n";
+    std::cout << "test succes return code: 0 " << "\n";
+    std::cout << "test error return code: see docs " << "\n";
 
-    std::cout << "test1: open connection to print engine (print engine must be running !)" << std::endl;
+    std::cout << "test1: open connection to print engine (print engine must be running !)" << "\n";
     phIntptr->connect();
-    std::cout << "test2: set head power on" << std::endl;
+    std::cout << "test2: set head power on" << "\n";
  
     phIntptr->turnOnPh();
 
     std::this_thread::sleep_for(std::chrono::seconds(20));
 
-    std::cout << "test3: set head power off" << std::endl;
+    std::cout << "test3: set head power off" << "\n";
     phIntptr->turnOffPh();
 
-    std::cout << "test4: close connection to print engine (print engine must be running !)" << std::endl;
+    std::cout << "test4: close connection to print engine (print engine must be running !)" << "\n";
     phIntptr->disconnect();
 
-    std::cout << "bool functions tests" << std::endl;
-    std::cout << "test4: is printer busy" << std::endl;
+    std::cout << "bool functions tests" << "\n";
+    std::cout << "test4: is printer busy" << "\n";
     bool status = PiIsBusy();
-    std::cout << "return code: " << status << std::endl;
+    std::cout << "return code: " << status << "\n";
     delete phIntptr;
 }
 

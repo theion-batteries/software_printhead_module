@@ -34,6 +34,7 @@ struct cooling_config_yaml_params
     double phead_max_rot_speed = 100;
     double phead_intermediate_stop = 50;    //                        # so printhead will stop here, rotate the angle defined by the following parameter, and keep going.
     double phead_start_angle = 90; //                       # before moving the printhead to the cooling surface, it needs to be rotated.
+    uint16_t timeout = 10;
 };
 class meteorAdapter
 {

@@ -8,64 +8,64 @@ PrinterParams=configPtr;
 wgm_feedbacks::enum_hw_feedback meteorAdapter::connect()
 {
 
-    std::cout << "connecting to PRINT ENGINE SERVER" << std::endl;
+    std::cout << "connecting to PRINT ENGINE SERVER" << "\n";
     eRET open = PiOpenPrinter();
 
     if (open != eRET::RVAL_OK)
     {
-        std::cout << "error connection, see code: " << open << std::endl;
+        std::cout << "error connection, see code: " << open << "\n";
         return wgm_feedbacks::enum_hw_feedback::hw_error;
     }
     connected = true;
 
-    std::cout << "Print Engine connection success" << std::endl;
+    std::cout << "Print Engine connection success" << "\n";
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 }
 wgm_feedbacks::enum_hw_feedback meteorAdapter::disconnect()
 {
 
-    std::cout << "disconnecting.." << std::endl;
+    std::cout << "disconnecting.." << "\n";
     eRET close = PiClosePrinter();
 
     if (close != eRET::RVAL_OK)
     {
-        std::cout << "error disconnection, see code: " << close << std::endl;
+        std::cout << "error disconnection, see code: " << close << "\n";
         return wgm_feedbacks::enum_hw_feedback::hw_error;
     }
 
-    std::cout << "Print Engine disconnection success" << std::endl;
+    std::cout << "Print Engine disconnection success" << "\n";
     connected = false;
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 }
 
 wgm_feedbacks::enum_hw_feedback meteorAdapter::turnOnPh()
 {
-    std::cout << "powering print head on" << std::endl;
+    std::cout << "powering print head on" << "\n";
 
     eRET poweron = PiSetHeadPower(1);
     if (poweron != eRET::RVAL_OK)
     {
-        std::cout << "error power on, see code: " << poweron << std::endl;
+        std::cout << "error power on, see code: " << poweron << "\n";
         return wgm_feedbacks::enum_hw_feedback::hw_error;
     }
 
-    std::cout << "head Power on success" << std::endl;
+    std::cout << "head Power on success" << "\n";
     headPowered = true;
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 
 }
 wgm_feedbacks::enum_hw_feedback meteorAdapter::turnOffPh()
 {
-    std::cout << "powering  print head off" << std::endl;
+    std::cout << "powering  print head off" << "\n";
 
     eRET poweroff = PiSetHeadPower(0);
     if (poweroff != eRET::RVAL_OK)
     {
-        std::cout << "error power off, see code: " << poweroff << std::endl;
+        std::cout << "error power off, see code: " << poweroff << "\n";
         return wgm_feedbacks::enum_hw_feedback::hw_error;
     }
 
-    std::cout << "head Power off success" << std::endl;
+    std::cout << "head Power off success" << "\n";
     headPowered = false;
     return wgm_feedbacks::enum_hw_feedback::hw_success;
 
