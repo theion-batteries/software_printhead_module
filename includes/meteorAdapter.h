@@ -26,7 +26,6 @@ struct cooling_config_yaml_params
     uint16 ph_rotation_server_port = 8882;
     std::string ph_trigger_server_ip = "192.168.0.205"; //# 192.168.0.209 "127.0.0.1" # trigger / trigger
     uint16 ph_trigger_server_port = 8881;
-    uint16 timeout = 10;
     double phead_travel = 150;
     double phead_max_travel = 220;
     double phead_rotations = 5;
